@@ -1,12 +1,12 @@
 #%%
+from gzip import compress
+
 import blosc
 import numpy as np
 from PIL import Image
 
 from boss_export.boss import boss_key
-from boss_export.libs import mortonxyz
-
-from gzip import compress
+from boss_export.libs import chunks, mortonxyz
 
 #%%
 
@@ -53,7 +53,11 @@ data_array = data_np.reshape(cube_size[::-1])
 #%%
 image = Image.fromarray(data_array[0, :, :])
 image.save("test_data/image.jpg")
+image.save("test_data/image.tiff")
 
 
 #%%
-comp_array = compress(data_array.to_string())
+comp_array = compress(chunks.encode_raw(data_array))
+
+with open("test_data/ng_file", "wb") as f:
+    f.write(comp_array)
