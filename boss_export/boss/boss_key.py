@@ -41,3 +41,10 @@ def HashedKey(*args, version=None):
     if version is not None:
         key = "{}&{}".format(key, version)
     return key
+
+
+def ret_boss_key(col_id, exp_id, chan_id, res, t, mortonid, version=0, parent_iso=None):
+    # helper function to return the s3 key inside BOSS
+    return HashedKey(
+        parent_iso, col_id, exp_id, chan_id, res, t, mortonid, version=version
+    )
