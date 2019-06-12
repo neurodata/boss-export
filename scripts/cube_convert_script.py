@@ -1,12 +1,11 @@
 #%%
-from boss_export.libs import compression
 
 import blosc
 import numpy as np
 from PIL import Image
 
 from boss_export.boss import boss_key
-from boss_export.libs import chunks, mortonxyz
+from boss_export.libs import chunks, mortonxyz, compression
 
 #%%
 
