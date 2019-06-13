@@ -48,3 +48,8 @@ def ret_boss_key(col_id, exp_id, chan_id, res, t, mortonid, version=0, parent_is
     return HashedKey(
         parent_iso, col_id, exp_id, chan_id, res, t, mortonid, version=version
     )
+
+
+def parts_from_bosskey(s3key):
+    s3keyparts = s3key.split("&")
+    return s3keyparts[1:]
