@@ -18,9 +18,9 @@ exp = 174  # "bock11"
 ch = 1005  # "image"
 
 # TODO: get these from BOSS metadata (can use the web API)
-x = 67712
-y = 59904
-z = 3993
+x = 135424
+y = 119808
+z = 4156
 offset = 0, 0, 2917
 t = 0  # this is always 0
 

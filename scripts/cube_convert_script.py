@@ -8,7 +8,7 @@ from boss_export.boss import boss_key
 from boss_export.libs import chunks, mortonxyz, compression
 
 #%%
-
+# these are just random xyz values
 x = 67712
 y = 59904
 z = 3993
