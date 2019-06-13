@@ -6,8 +6,7 @@ Output: CSV file of each S3 key in the cuboids bucket
 import os
 import sys
 
-print(os.getcwd())
-print(sys.path)
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), os.path.pardir))
 
 from boss_export.libs import chunks, mortonxyz
 from boss_export.boss import boss_key
