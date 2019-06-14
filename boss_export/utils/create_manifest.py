@@ -8,10 +8,7 @@ import sys
 from multiprocessing.pool import Pool
 from functools import partial
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), os.path.pardir))
-
-from boss_export.libs import chunks, mortonxyz
-from boss_export.boss import boss_key
+from boss_export.libs import chunks, mortonxyz, bosslib
 
 # TODO: an interface for running this (e.g. cmdline)
 # these are the IDs from the database
@@ -37,7 +34,7 @@ def create_key(xx, yy, zz):
     x_i, y_i, z_i = [i // cubes for i, cubes, o in zip([xx, yy, zz], CUBE_SIZE, OFFSET)]
     mortonid = mortonxyz.XYZMorton(x_i, y_i, z_i)
     # ret_boss_key(col_id, exp_id, chan_id, res, t, mortonid, version=0, parent_iso=None)
-    s3key = boss_key.ret_boss_key(coll, exp, ch, res, t, mortonid)
+    s3key = bosslib.ret_boss_key(coll, exp, ch, res, t, mortonid)
     return s3key
 
 

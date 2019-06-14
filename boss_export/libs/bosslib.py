@@ -1,4 +1,6 @@
 import hashlib
+import blosc
+import numpy as np
 
 
 def HashedKey(*args, version=None):
@@ -51,5 +53,21 @@ def ret_boss_key(col_id, exp_id, chan_id, res, t, mortonid, version=0, parent_is
 
 
 def parts_from_bosskey(s3key):
+    """Returns: parent_iso, col_id, exp_id, chan_id, res, t, mortonid, version
+    """
     s3keyparts = s3key.split("&")
     return s3keyparts[1:]
+
+
+def get_boss_data(s3resource, s3Bucket, s3Key, dtype, cube_size):
+    """returns data from boss
+    >> data = get_boss_data(session.resource("s3"), "cuboids.production.neurodata", "89bb785630a9446b6a564c8779b3678d&51&174&1005&0&0&12282054&0", "uint8", (512, 512, 16) )
+    >> data.shape
+    (16, 512, 512)
+    """
+    obj = s3resource.Object(s3Bucket, s3Key)
+    r = obj.get()
+    rawdata = blosc.decompress(r["Body"].read())
+    data = np.frombuffer(rawdata, dtype=dtype)
+
+    return data.reshape(cube_size[::-1])

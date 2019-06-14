@@ -5,8 +5,7 @@ import boto3
 import numpy as np
 import matplotlib.pyplot as plt
 
-from boss_export.boss import boss_key
-from boss_export.libs import mortonxyz
+from boss_export.libs import mortonxyz, bosslib
 
 #%%
 with open("manifest.csv", "r") as f:
@@ -27,7 +26,7 @@ for n in range(0, n_iter):
     s_line = random.randint(0, len(lines))
     s3key = lines[s_line].strip()
     try:
-        boss_key_parts = boss_key.parts_from_bosskey(s3key)
+        boss_key_parts = bosslib.parts_from_bosskey(s3key)
         morton_id = boss_key_parts[-2]
         xyz = mortonxyz.MortonXYZ(int(morton_id))
         # print(morton_id, "xyz", xyz)

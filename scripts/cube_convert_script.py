@@ -1,11 +1,11 @@
 #%%
+import gzip
 
 import blosc
 import numpy as np
 from PIL import Image
 
-from boss_export.boss import boss_key
-from boss_export.libs import chunks, mortonxyz, compression
+from boss_export.libs import chunks, mortonxyz, compression, bosslib
 
 #%%
 # these are just random xyz values
@@ -34,7 +34,7 @@ xyz_cube_idx = [xyz // c for xyz, c in zip((x, y, z), cube_size)]
 m_idx = mortonxyz.XYZMorton(*xyz_cube_idx)
 
 #%%
-boss_key_name = boss_key.ret_boss_key(coll, exp, ch, res, t, m_idx)
+boss_key_name = bosslib.ret_boss_key(coll, exp, ch, res, t, m_idx)
 
 print(boss_key_name)
 
