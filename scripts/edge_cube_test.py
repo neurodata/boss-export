@@ -7,9 +7,7 @@ from boss_export.libs import bosslib, ngprecomputed, mortonxyz
 
 #%%
 # bock11 extents
-x = 135424
-y = 119808
-z = 4156
+EXTENT = (135424, 119808, 4156)
 OFFSET = 0, 0, 2917
 t = 0  # this is always 0
 res = 0
@@ -30,9 +28,9 @@ BUCKET = "cuboids.production.neurodata"
 # only edge with keys that exist is along z axis and maybe y...
 
 # get coords for edge of z
-z_edge = (z) // CUBE_SIZE[2] * CUBE_SIZE[2]
+z_edge = EXTENT[2] // CUBE_SIZE[2] * CUBE_SIZE[2]
 
-x_mid, y_mid = [i // c // 2 * c for i, c in zip([x, y], CUBE_SIZE[0:2])]
+x_mid, y_mid = [i // c // 2 * c for i, c in zip(EXTENT[0:2], CUBE_SIZE[0:2])]
 
 print(x_mid, y_mid, z_edge)
 
