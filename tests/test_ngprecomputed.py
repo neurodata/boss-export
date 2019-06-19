@@ -1,5 +1,6 @@
 from pytest import raises
 from requests import exceptions
+import numpy as np
 
 from boss_export.libs import ngprecomputed
 
@@ -58,3 +59,19 @@ def test_get_key():
     res = 0
     ngkey = ngprecomputed.get_key(mortonid, basescale, res, shape, offset)
     assert f"4_4_40/{512*2}-{512*3}_{512*1}-{512*2}_{2917+16}-{2917+16*2}" == ngkey
+
+
+def test_limit_to_extent():
+    # bock11 extents
+    extent = 135424, 119808, 4156  # xyz order
+
+    xyz = 135168, 119296, 4144  # xyz order
+
+    # this is the shape it comes back from when reading it out of boss
+    data_full = np.zeros((16, 512, 512), dtype="uint8", order="F")  # zyx order
+
+    data_limit = ngprecomputed.crop_to_extent(data_full, xyz, extent)
+
+    limited_shape = tuple(e - i for e, i in zip(extent, xyz))
+
+    assert data_limit.shape == limited_shape[::-1]

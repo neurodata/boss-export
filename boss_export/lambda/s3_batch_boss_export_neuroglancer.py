@@ -3,10 +3,9 @@ Entry point is an object inside the boss s3 bucket
 Output is a neuroglancer gzip compressed object at the correct path and bucket
 """
 
-import blosc
 import boto3
 
-from boss_export.libs import mortonxyz, ngprecomputed, bosslib
+from boss_export.libs import bosslib, mortonxyz, ngprecomputed
 
 # TODO: dynamically calculate these
 DEST_BUCKET = "nd-precomputed-volumes"
@@ -15,9 +14,16 @@ DEST_LAYER = "image"
 BASE_SCALE = [4, 4, 40]
 CUBE_SIZE = 512, 512, 16
 dtype = "uint8"
+EXTENT = 135424, 119808, 4156  # x, y, z
+OFFSET = [0, 0, 2917]
 
 # will get credentials from role it's running under
 S3_RESOURCE = boto3.resource("s3")
+
+
+def get_coords(xyz, cube_size, offset):
+    xyz_coords = [i * c + o for i, c, o in zip(xyz, cube_size, offset)]
+    return xyz_coords
 
 
 def lambda_handler(event, context):
@@ -43,11 +49,17 @@ def lambda_handler(event, context):
     # decompress the object from boss format to numpy
     data_array = bosslib.get_boss_data(S3_RESOURCE, s3Bucket, s3Key, dtype, CUBE_SIZE)
 
+    # need to reshape and reset size when at edges
+    xyz_index = mortonxyz.MortonXYZ(int(mortonid))
+    xyz = get_coords(xyz_index, CUBE_SIZE, OFFSET)
+
+    data_array = ngprecomputed.crop_to_extent(data_array, xyz, EXTENT)
+
     # get the shape of the object
     shape = data_array.shape
 
     # compute neuroglancer key
-    ngkey_part = ngprecomputed.get_key(mortonid, BASE_SCALE, res, shape)
+    ngkey_part = ngprecomputed.get_key(mortonid, BASE_SCALE, res, shape, OFFSET)
     ngkey = f"{DEST_DATASET}/{DEST_LAYER}/{ngkey_part}"
 
     # saving it out

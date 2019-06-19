@@ -1,7 +1,8 @@
 #%%
 import boto3
+from PIL import Image
 
-from boss_export.libs import bosslib, ngprecomputed, mortonxyz
+from boss_export.libs import bosslib, mortonxyz
 
 # * BOSS and ngprecomputed keys start from offset
 
@@ -44,10 +45,17 @@ s3key = bosslib.ret_boss_key(coll, exp, ch, res, t, mortonid)
 print(s3key)
 
 data = bosslib.get_boss_data(S3, BUCKET, s3key, dtype, CUBE_SIZE)
-
-
-#%%
 print(data.shape)
 # 16, 512, 512
 # so... we have full "cubes" of data all the way out to the edges in boss
 # but is it appropriately filled?
+
+
+#%%
+
+for i, zsl in enumerate(data):
+    img = Image.fromarray(zsl)
+    img.save(f"test_data/{x_mid}_{y_mid}_{i+z_edge}.png")
+
+
+#%%

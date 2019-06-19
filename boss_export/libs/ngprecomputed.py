@@ -86,3 +86,15 @@ def get_key(mortonid, basescale, res, shape, offset=[0, 0, 0], iso=False):
 
     return f"{scale_str}/{xyz_str}"
 
+
+def crop_to_extent(data, xyz, extent):
+    """Limits the data to the volume's extent
+    data is z, y, x ordered
+    xyz and extent are xyz ordered
+    """
+
+    diff_extent = [e - i for e, i in zip(extent, xyz)]
+
+    data_clip = data[0 : diff_extent[2], 0 : diff_extent[1], 0 : diff_extent[0]]
+
+    return data_clip

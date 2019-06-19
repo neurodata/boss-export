@@ -12,5 +12,5 @@ def test_get_boss_data():
     cube_size = 512, 512, 16
 
     data = bosslib.get_boss_data(s3resource, s3Bucket, s3Key, dtype, cube_size)
-    assert data.shape == (16, 512, 512)
-
+    assert data.shape == cube_size[::-1]
+    assert data.dtype == dtype
