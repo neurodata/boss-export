@@ -1,8 +1,9 @@
+import boto3
+import numpy as np
 from pytest import raises
 from requests import exceptions
-import numpy as np
 
-from boss_export.libs import ngprecomputed
+from boss_export.libs import bosslib, ngprecomputed
 
 
 def test_get_scales_ngpath():
@@ -75,3 +76,49 @@ def test_limit_to_extent():
     limited_shape = tuple(e - i for e, i in zip(extent, xyz))
 
     assert data_limit.shape == limited_shape[::-1]
+
+
+def test_save_obj():
+    # chan_id:1005
+    # col_id:51
+    # digest:'89bb785630a9446b6a564c8779b3678d'
+    # exp_id:174
+    # mortonid:12282054
+    # parent_iso:None
+    # res:0
+    # s3key:'89bb785630a9446b6a564c8779b3678d&51&174&1005&0&0&12282054&0'
+    # t:0
+    # version:0
+
+    # mortonxyz.MortonXYZ(12282054)
+    # [132, 117, 249]
+
+    session = boto3.Session(profile_name="boss-s3")
+    boss_s3resource = session.resource("s3")
+    boss_s3Bucket = "cuboids.production.neurodata"
+    boss_s3Key = "89bb785630a9446b6a564c8779b3678d&51&174&1005&0&0&12282054&0"
+    dtype = "uint8"
+    cube_size = 512, 512, 16
+    offset = [0, 0, 2917]
+
+    basescale = [4, 4, 40]
+
+    bosskey = bosslib.parts_from_bosskey(boss_s3Key)
+    ngkey = ngprecomputed.get_key(
+        bosskey.mortonid, basescale, bosskey.res, cube_size, offset
+    )
+
+    data = bosslib.get_boss_data(
+        boss_s3resource, boss_s3Bucket, boss_s3Key, dtype, cube_size
+    )
+
+    # save it to a test folder
+    ng_session = boto3.Session(profile_name="NGuser")
+    ng_s3resource = ng_session.resource("s3")
+    ng_s3Bucket = "nd-precomputed-volumes"
+
+    ngprecomputed.save_obj(ng_s3resource, ng_s3Bucket, ngkey, data)
+
+    # attempt to read it back in?
+
+    # examine dict to determine what params we can check

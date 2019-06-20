@@ -68,11 +68,14 @@ def numpy_chunk(data_array):
 
 def get_key(mortonid, basescale, res, shape, offset=[0, 0, 0], iso=False):
     """
-    this returns the key w/in the ngprecomputed bucket (minus the bucket info)
-    
-    reference: 
-    full key: s3://nd-precomputed-volumes/bock11/image/32_32_40/7168-7680_6144-6656_2917-2981
+    this returns s3key w/in the ngprecomputed bucket (minus the bucket info)
+    mortonid starts from 0 without the offset
+    offset gets added to the s3key string
     """
+
+    # reference
+    # full key: s3://nd-precomputed-volumes/bock11/image/32_32_40/7168-7680_6144-6656_2917-2981
+
     xyz = mortonxyz.MortonXYZ(int(mortonid))
     xyz_str = "_".join(
         [
@@ -95,6 +98,23 @@ def crop_to_extent(data, xyz, extent):
 
     diff_extent = [e - i for e, i in zip(extent, xyz)]
 
-    data_clip = data[0 : diff_extent[2], 0 : diff_extent[1], 0 : diff_extent[0]]
+    data_clip = data[: diff_extent[2], : diff_extent[1], : diff_extent[0]]
 
     return data_clip
+
+
+def save_obj(s3_resource, bucket, ngkey, data):
+    """Saves data into a bucket with the parameters needed for neuroglancer
+    Returns: dict
+    """
+    obj = s3_resource.Object(bucket, ngkey)
+    resp = obj.put(
+        Body=data,
+        StorageClass="INTELLIGENT_TIERING",
+        CacheControl="max-age=3600, s-max-age=3600",
+        ContentEncoding="gzip",
+        ContentType="application/octet-stream",
+        ACL="bucket-owner-full-control",
+    )
+
+    return resp

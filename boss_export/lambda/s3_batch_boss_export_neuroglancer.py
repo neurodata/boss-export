@@ -9,8 +9,8 @@ from boss_export.libs import bosslib, mortonxyz, ngprecomputed
 
 # TODO: dynamically calculate these
 DEST_BUCKET = "nd-precomputed-volumes"
-DEST_DATASET = "bock11"
-DEST_LAYER = "image"
+DEST_DATASET = "bock11_test"
+DEST_LAYER = "image_test"
 BASE_SCALE = [4, 4, 40]
 CUBE_SIZE = 512, 512, 16
 dtype = "uint8"
@@ -21,8 +21,8 @@ OFFSET = [0, 0, 2917]
 S3_RESOURCE = boto3.resource("s3")
 
 
-def get_coords(xyz, cube_size, offset):
-    xyz_coords = [i * c + o for i, c, o in zip(xyz, cube_size, offset)]
+def get_coords_minus_offset(xyz, cube_size, offset):
+    xyz_coords = [i * c - o for i, c, o in zip(xyz, cube_size, offset)]
     return xyz_coords
 
 
@@ -41,17 +41,18 @@ def lambda_handler(event, context):
 
     # object naming
     # - decode the object name into its parts: morton ID, res, table keys
-    parent_iso, col_id, exp_id, chan_id, res, t, mortonid, version = bosslib.parts_from_bosskey(
-        s3Key
-    )
+    bosskey = bosslib.parts_from_bosskey(s3Key)
 
     # get obj
     # decompress the object from boss format to numpy
     data_array = bosslib.get_boss_data(S3_RESOURCE, s3Bucket, s3Key, dtype, CUBE_SIZE)
 
     # need to reshape and reset size when at edges
-    xyz_index = mortonxyz.MortonXYZ(int(mortonid))
-    xyz = get_coords(xyz_index, CUBE_SIZE, OFFSET)
+    xyz_index = mortonxyz.MortonXYZ(bosskey.mortonid)  # boss mortonid contains offset
+
+    # TODO: handle scale here for res > 0
+    # TODO: deal with morton offsets (boss has it, ngprecomputed does not)
+    xyz = get_coords_minus_offset(xyz_index, CUBE_SIZE, OFFSET)
 
     data_array = ngprecomputed.crop_to_extent(data_array, xyz, EXTENT)
 
@@ -59,7 +60,9 @@ def lambda_handler(event, context):
     shape = data_array.shape
 
     # compute neuroglancer key
-    ngkey_part = ngprecomputed.get_key(mortonid, BASE_SCALE, res, shape, OFFSET)
+    ngkey_part = ngprecomputed.get_key(
+        bosskey.mortonid, BASE_SCALE, bosskey.res, shape, OFFSET
+    )
     ngkey = f"{DEST_DATASET}/{DEST_LAYER}/{ngkey_part}"
 
     # saving it out
@@ -67,9 +70,7 @@ def lambda_handler(event, context):
     ngdata = ngprecomputed.numpy_chunk(data_array)
 
     # save object to the target bucket and path
-    S3_RESOURCE
-
-    # set metadata on object (compression -> gzip)
+    ngprecomputed.save_obj(S3_RESOURCE, DEST_BUCKET, ngkey, ngdata)
 
     results = [
         {"taskId": taskId, "resultCode": "Succeeded", "resultString": "Succeeded"}

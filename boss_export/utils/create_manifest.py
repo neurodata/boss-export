@@ -3,12 +3,10 @@ Inputs: should be name of collection/experiment/channel and resolution(s)
 Output: CSV file of each S3 key in the cuboids bucket
 """
 
-import os
-import sys
 from multiprocessing.pool import Pool
 from functools import partial
 
-from boss_export.libs import chunks, mortonxyz, bosslib
+from boss_export.libs import mortonxyz, bosslib
 
 # TODO: an interface for running this (e.g. cmdline)
 # these are the IDs from the database
@@ -17,9 +15,7 @@ exp = 174  # "bock11"
 ch = 1005  # "image"
 
 # TODO: get these from BOSS metadata (can use the web API)
-x = 135424
-y = 119808
-z = 4156
+EXTENT = 135424, 119808, 4156
 OFFSET = 0, 0, 2917
 t = 0  # this is always 0
 
@@ -42,9 +38,9 @@ def main():
     open("manifest.csv", "w").close()
 
     # iterate through the x,y,z
-    xx = list(range(OFFSET[0], x, CUBE_SIZE[0]))
-    for yy in range(OFFSET[1], y, CUBE_SIZE[1]):
-        for zz in range(OFFSET[2], z, CUBE_SIZE[2]):
+    xx = list(range(OFFSET[0], EXTENT[0], CUBE_SIZE[0]))
+    for yy in range(OFFSET[1], EXTENT[1], CUBE_SIZE[1]):
+        for zz in range(OFFSET[2], EXTENT[2], CUBE_SIZE[2]):
             create_key_partial = partial(create_key, yy=yy, zz=zz)
             with Pool() as pool:
                 keys = pool.map(create_key_partial, xx)

@@ -1,4 +1,6 @@
+from dataclasses import dataclass
 import hashlib
+
 import blosc
 import numpy as np
 
@@ -45,6 +47,20 @@ def HashedKey(*args, version=None):
     return key
 
 
+@dataclass
+class BossKey:
+    s3key: str
+    digest: str
+    parent_iso: int
+    col_id: int
+    exp_id: int
+    chan_id: int
+    res: int
+    t: int
+    mortonid: int
+    version: int = 0
+
+
 def ret_boss_key(col_id, exp_id, chan_id, res, t, mortonid, version=0, parent_iso=None):
     # helper function to return the s3 key inside BOSS
     return HashedKey(
@@ -53,10 +69,20 @@ def ret_boss_key(col_id, exp_id, chan_id, res, t, mortonid, version=0, parent_is
 
 
 def parts_from_bosskey(s3key):
-    """Returns: parent_iso, col_id, exp_id, chan_id, res, t, mortonid, version
+    """Returns: BossKey
+    Note: parent_iso not returned if not in original s3key
     """
     s3keyparts = s3key.split("&")
-    return s3keyparts[1:]
+
+    digest = s3keyparts.pop(0)
+
+    s3keyparts = [int(p) for p in s3keyparts]
+
+    if len(s3keyparts) < 8:
+        s3keyparts = [None] + s3keyparts
+
+    bosskey = BossKey(s3key, digest, *s3keyparts)
+    return bosskey
 
 
 def get_boss_data(s3resource, s3Bucket, s3Key, dtype, cube_size):

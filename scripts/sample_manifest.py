@@ -2,10 +2,10 @@
 import random
 
 import boto3
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
-from boss_export.libs import mortonxyz, bosslib
+from boss_export.libs import bosslib, mortonxyz
 
 #%%
 with open("manifest.csv", "r") as f:
@@ -26,15 +26,14 @@ for n in range(0, n_iter):
     s_line = random.randint(0, len(lines))
     s3key = lines[s_line].strip()
     try:
-        boss_key_parts = bosslib.parts_from_bosskey(s3key)
-        morton_id = boss_key_parts[-2]
-        xyz = mortonxyz.MortonXYZ(int(morton_id))
+        bosskey = bosslib.parts_from_bosskey(s3key)
+        xyz = mortonxyz.MortonXYZ(bosskey.mortonid)
         # print(morton_id, "xyz", xyz)
         s3_obj = S3.head_object(Bucket="cuboids.production.neurodata", Key=s3key)
         xy_succ = np.append(xy_succ, [xyz], axis=0)
         # print(s3key, "found")
 
-    except Exception as e:
+    except Exception:
         # print(s3key, "error", e)
         n_fails += 1
         xy_fail = np.append(xy_fail, [xyz], axis=0)
