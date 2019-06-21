@@ -11,11 +11,11 @@ from boss_export.libs import bosslib, mortonxyz, ngprecomputed
 DEST_BUCKET = "nd-precomputed-volumes"
 DEST_DATASET = "bock11_test"
 DEST_LAYER = "image_test"
-BASE_SCALE = [4, 4, 40]
+BASE_SCALE = 4, 4, 40
 CUBE_SIZE = 512, 512, 16
 dtype = "uint8"
 EXTENT = 135424, 119808, 4156  # x, y, z
-OFFSET = [0, 0, 2917]
+OFFSET = 0, 0, 2917
 
 # will get credentials from role it's running under
 S3_RESOURCE = boto3.resource("s3")
@@ -60,10 +60,10 @@ def lambda_handler(event, context):
     shape = data_array.shape
 
     # compute neuroglancer key
-    ngkey_part = ngprecomputed.get_key(
+    chunk_name = ngprecomputed.get_chunk_name(
         bosskey.mortonid, BASE_SCALE, bosskey.res, shape, OFFSET
     )
-    ngkey = f"{DEST_DATASET}/{DEST_LAYER}/{ngkey_part}"
+    ngkey = ngprecomputed.get_ng_key(DEST_DATASET, DEST_LAYER, chunk_name)
 
     # saving it out
     # compress the object to neuroglancer format (gzip serialized numpy)

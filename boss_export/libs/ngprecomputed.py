@@ -66,15 +66,23 @@ def numpy_chunk(data_array):
     return comp_array
 
 
-def get_key(mortonid, basescale, res, shape, offset=[0, 0, 0], iso=False):
+def get_ng_key(dataset, layer, chunk_name):
+    ngkey = f"{dataset}/{layer}/{chunk_name}"
+
+    return ngkey
+
+
+def get_chunk_name(mortonid, basescale, res, shape, offset=[0, 0, 0], iso=False):
     """
-    this returns s3key w/in the ngprecomputed bucket (minus the bucket info)
-    mortonid starts from 0 without the offset
-    offset gets added to the s3key string
+    this returns neuroglancer cube name (minus the volume info)
+    mortonid starts from 0 *without the offset*
+    offset is added to the s3key string
+    >> s3key = get_chunk_name(0, (4, 4, 40), 0, (512, 512, 16), (0, 0, 2917))
+    >> s3key
+    "4_4_40/0-512_0-512_2917-2933"
     """
 
-    # reference
-    # full key: s3://nd-precomputed-volumes/bock11/image/32_32_40/7168-7680_6144-6656_2917-2981
+    # ref FULL key: s3://nd-precomputed-volumes/bock11/image/32_32_40/7168-7680_6144-6656_2917-2981
 
     xyz = mortonxyz.MortonXYZ(int(mortonid))
     xyz_str = "_".join(

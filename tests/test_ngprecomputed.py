@@ -43,23 +43,33 @@ def test_get_scale():
         ] == ngprecomputed.get_scale(scales[0], res, iso=True)
 
 
-def test_get_key():
-    basescale = [4, 4, 40]
+def test_ng_key():
+    dataset = "bock11_test"
+    layer = "image_test"
+    chunk_name = "32_32_40/0-512_0-512_2917-2933"
+
+    s3_key = ngprecomputed.get_ng_key(dataset, layer, chunk_name)
+
+    assert s3_key == "bock11_test/image_test/32_32_40/0-512_0-512_2917-2933"
+
+
+def test_get_chunk_name():
+    basescale = 4, 4, 40
     res = 3
-    shape = [512, 512, 16]
-    offset = [0, 0, 2917]
+    shape = 512, 512, 16
+    offset = 0, 0, 2917
 
     mortonid = 0
-    ngkey = ngprecomputed.get_key(mortonid, basescale, res, shape, offset)
-    assert "32_32_40/0-512_0-512_2917-2933" == ngkey
+    chunk_name = ngprecomputed.get_chunk_name(mortonid, basescale, res, shape, offset)
+    assert "32_32_40/0-512_0-512_2917-2933" == chunk_name
 
     mortonid = 14
     # xyz = mortonxyz.MortonXYZ(mortonid)
     # xyz = [2,1,1]
 
     res = 0
-    ngkey = ngprecomputed.get_key(mortonid, basescale, res, shape, offset)
-    assert f"4_4_40/{512*2}-{512*3}_{512*1}-{512*2}_{2917+16}-{2917+16*2}" == ngkey
+    chunk_name = ngprecomputed.get_chunk_name(mortonid, basescale, res, shape, offset)
+    assert f"4_4_40/{512*2}-{512*3}_{512*1}-{512*2}_{2917+16}-{2917+16*2}" == chunk_name
 
 
 def test_limit_to_extent():
@@ -95,16 +105,19 @@ def test_save_obj():
 
     session = boto3.Session(profile_name="boss-s3")
     boss_s3resource = session.resource("s3")
+
     boss_s3Bucket = "cuboids.production.neurodata"
     boss_s3Key = "89bb785630a9446b6a564c8779b3678d&51&174&1005&0&0&12282054&0"
     dtype = "uint8"
     cube_size = 512, 512, 16
-    offset = [0, 0, 2917]
+    offset = 0, 0, 2917
 
-    basescale = [4, 4, 40]
+    basescale = 4, 4, 40
+    dest_dataset = "bock11_test"
+    dest_layer = "image_test"
 
     bosskey = bosslib.parts_from_bosskey(boss_s3Key)
-    ngkey = ngprecomputed.get_key(
+    ngkey = ngprecomputed.get_chunk_name(
         bosskey.mortonid, basescale, bosskey.res, cube_size, offset
     )
 
