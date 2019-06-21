@@ -21,11 +21,6 @@ OFFSET = 0, 0, 2917
 S3_RESOURCE = boto3.resource("s3")
 
 
-def get_coords_minus_offset(xyz, cube_size, offset):
-    xyz_coords = [i * c - o for i, c, o in zip(xyz, cube_size, offset)]
-    return xyz_coords
-
-
 def lambda_handler(event, context):
     # Parse job parameters
     invocationSchemaVersion = event["invocationSchemaVersion"]
@@ -47,21 +42,24 @@ def lambda_handler(event, context):
     # decompress the object from boss format to numpy
     data_array = bosslib.get_boss_data(S3_RESOURCE, s3Bucket, s3Key, dtype, CUBE_SIZE)
 
+    # get the coordinates of the cube
+    xyz_coords = mortonxyz.get_coords(bosskey.mortonid, CUBE_SIZE)
+
     # need to reshape and reset size when at edges
-    xyz_index = mortonxyz.MortonXYZ(bosskey.mortonid)  # boss mortonid contains offset
+    data_array = ngprecomputed.crop_to_extent(data_array, xyz_coords, EXTENT)
+
+    # boss mortonid has offset embedded in it
+    ngmorton = ngprecomputed.ngmorton(bosskey.mortonid, CUBE_SIZE, OFFSET)
 
     # TODO: handle scale here for res > 0
     # TODO: deal with morton offsets (boss has it, ngprecomputed does not)
-    xyz = get_coords_minus_offset(xyz_index, CUBE_SIZE, OFFSET)
-
-    data_array = ngprecomputed.crop_to_extent(data_array, xyz, EXTENT)
 
     # get the shape of the object
     shape = data_array.shape
 
-    # compute neuroglancer key
+    # compute neuroglancer key (w/ offset in name)
     chunk_name = ngprecomputed.get_chunk_name(
-        bosskey.mortonid, BASE_SCALE, bosskey.res, shape, OFFSET
+        ngmorton, BASE_SCALE, bosskey.res, shape, OFFSET
     )
     ngkey = ngprecomputed.get_ng_key(DEST_DATASET, DEST_LAYER, chunk_name)
 

@@ -15,3 +15,12 @@ def MortonXYZ(zindex):
     """ Get XYZ coordinates from morton order """
     m = morton.Morton(dimensions=3, bits=64)
     return m.unpack(zindex)
+
+
+def get_coords(mortonid, cube_size):
+    """ Given a morton id and cube size, return voxel position in the volume (xyz)
+    """
+    xyz = MortonXYZ(mortonid)
+    xyz_coords = [i * c for i, c in zip(xyz, cube_size)]
+
+    return xyz_coords

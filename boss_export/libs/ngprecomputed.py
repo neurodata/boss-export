@@ -24,9 +24,23 @@ def get_res_from_ngkey(voxel_size, scales):
     return None
 
 
-def xyz_cube_idx_from_ng(xyz_act, cube_size, offset):
-    xyz_act = [(xyz - o) / c for xyz, c, o in zip(xyz_act, cube_size, offset)]
-    return xyz_act
+def xyz_cube_idx_from_xyz_act(xyz_act, cube_size, offset):
+    """mortonid in neuroglancer has no offset
+    """
+    xyz_no_offset = [(xyz - o) / c for xyz, c, o in zip(xyz_act, cube_size, offset)]
+
+    return xyz_no_offset
+
+
+def ngmorton(mortonid_actual, cube_size, offset):
+    """takes a mortonid w/ offset and removes it
+    given that the offset is aligned with cube size
+    """
+    xyz_idx = mortonxyz.MortonXYZ(mortonid_actual)
+    xyz_act = [i * c for i, c in zip(xyz_idx, cube_size)]
+    xyz_no_offset = xyz_cube_idx_from_xyz_act(xyz_act, cube_size, offset)
+
+    return mortonxyz.XYZMorton(*xyz_no_offset)
 
 
 def get_scales_ngpath(ngpath):

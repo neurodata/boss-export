@@ -3,7 +3,20 @@ import numpy as np
 from pytest import raises
 from requests import exceptions
 
-from boss_export.libs import bosslib, ngprecomputed
+from boss_export.libs import bosslib, mortonxyz, ngprecomputed
+
+
+def test_ngmorton():
+    #! failing because offset not aligned with the cube size
+    cube_size = 512, 512, 16
+    offset = 0, 0, 2917
+
+    boss_xyz_idx = [o // c for o, c in zip(offset, cube_size)]
+
+    mortonid_actual = mortonxyz.XYZMorton(*boss_xyz_idx)
+
+    ng_morton = ngprecomputed.ngmorton(mortonid_actual, cube_size, offset)
+    assert ng_morton == 0
 
 
 def test_get_scales_ngpath():
@@ -89,6 +102,7 @@ def test_limit_to_extent():
 
 
 def test_save_obj():
+    #! failing due to offset not aligned with cube size
     # chan_id:1005
     # col_id:51
     # digest:'89bb785630a9446b6a564c8779b3678d'
@@ -117,9 +131,13 @@ def test_save_obj():
     dest_layer = "image_test"
 
     bosskey = bosslib.parts_from_bosskey(boss_s3Key)
-    ngkey = ngprecomputed.get_chunk_name(
-        bosskey.mortonid, basescale, bosskey.res, cube_size, offset
+
+    ngmorton = ngprecomputed.ngmorton(bosskey.mortonid, cube_size, offset)
+
+    chunk_name = ngprecomputed.get_chunk_name(
+        ngmorton, basescale, bosskey.res, cube_size, offset
     )
+    ngkey = ngprecomputed.get_ng_key(dest_dataset, dest_layer, chunk_name)
 
     data = bosslib.get_boss_data(
         boss_s3resource, boss_s3Bucket, boss_s3Key, dtype, cube_size
@@ -130,7 +148,7 @@ def test_save_obj():
     ng_s3resource = ng_session.resource("s3")
     ng_s3Bucket = "nd-precomputed-volumes"
 
-    ngprecomputed.save_obj(ng_s3resource, ng_s3Bucket, ngkey, data)
+    resp = ngprecomputed.save_obj(ng_s3resource, ng_s3Bucket, ngkey, data)
 
     # attempt to read it back in?
 
