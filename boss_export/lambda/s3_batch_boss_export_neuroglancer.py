@@ -7,7 +7,7 @@ import boto3
 
 from boss_export.libs import bosslib, mortonxyz, ngprecomputed
 
-# TODO: dynamically calculate these
+# TODO: specify these in an SQS message
 DEST_BUCKET = "nd-precomputed-volumes"
 DEST_DATASET = "bock11_test"
 DEST_LAYER = "image_test"
