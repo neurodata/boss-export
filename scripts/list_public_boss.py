@@ -4,15 +4,18 @@ from intern.resource.boss.resource import *
 # admin token needed to list all projects
 rmt = BossRemote("/home/ben/Documents/travis_user_neurodata.cfg")
 
-colls = rmt.list_collections()
 
 with open("public_datasets.csv", "w") as f:
     f.write(
         "coll,exp,ch,exp_description,num_hierarchy_levels,dtype,x_start,x_stop,y_start,y_stop,z_start,z_stop\n"
     )
 
+colls = rmt.list_collections()
+colls.remove("ben_dev")
+
 for coll in colls:
     exps = rmt.list_experiments(coll)
+
     for exp in exps:
         exp_res = rmt.get_experiment(coll, exp)
         coord_frame_res = rmt.get_coordinate_frame(exp_res.coord_frame)
