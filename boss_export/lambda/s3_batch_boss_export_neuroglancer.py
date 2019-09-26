@@ -1,5 +1,5 @@
 """Lambda to export data from BOSS
-Entry point is an object inside the boss s3 bucket
+Consumes messages from an sqs queue
 Output is a neuroglancer gzip compressed object at the correct path and bucket
 """
 
