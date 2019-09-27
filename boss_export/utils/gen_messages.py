@@ -7,15 +7,17 @@ import click
 import boto3
 from botocore.exceptions import ParamValidationError
 
+import pandas as pd
+
 
 SESSION = boto3.Session(profile_name="icc")
-
 SQS = SESSION.resource("sqs")
-
 SQS_NAME = "copy-boss-cuboids"
 
 # globals
 DEST_BUCKET = "open-neurodata-test"  # testing location
+
+PUBLIC_METADATA = "scripts/public_datasets_ids.csv"
 
 
 def send_message(queue, msg):
@@ -58,11 +60,25 @@ def create_messages():
     pass
 
 
+def get_ch_metadata(coll, exp, ch):
+    """given a coll, exp, ch strings
+    returns as a dict the row from the csv file with metadata about this channel
+    """
+
+    df = pd.read_csv(PUBLIC_METADATA, index_col=0)
+    df = df[(df["coll"] == coll) & (df["exp"] == exp) & (df["ch"] == ch)]
+
+    return df.to_dict(orient="records")[0]
+
+
 @click.command()
 @click.argument("coll")
 @click.argument("exp")
 @click.argument("ch")
 def gen_messages(coll, exp, ch):
+
+    # get the metadata for this channel
+    ch_metadata = get_ch_metadata(coll, exp, ch)
 
     queue = create_or_get_queue()
     msgs = create_messages()
