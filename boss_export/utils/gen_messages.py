@@ -16,7 +16,7 @@ SQS_NAME = "copy-boss-cuboids"
 # globals
 DEST_BUCKET = "open-neurodata-test"  # testing location
 
-PUBLIC_METADATA = "scripts/public_datasets_ids.csv"
+PUBLIC_METADATA = "scripts/public_datasets_scales.csv"
 
 T = 0  # this is always 0
 CUBE_SIZE = 512, 512, 16
