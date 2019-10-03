@@ -39,4 +39,4 @@ df["coll_ids"] = coll_ids
 df["exp_ids"] = exp_ids
 df["ch_ids"] = ch_ids
 
-df.to_csv("public_datasets_ids.csv")
+df.to_csv("scripts/public_datasets_ids.csv", index=False)

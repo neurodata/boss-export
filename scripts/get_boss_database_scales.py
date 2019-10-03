@@ -48,4 +48,4 @@ df["z_voxel_size"] = z_voxel_sizes
 df["voxel_unit"] = voxel_units
 
 
-df.to_csv("scripts/public_datasets_scales.csv")
+df.to_csv("scripts/public_datasets_scales.csv", index=False)

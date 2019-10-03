@@ -7,6 +7,8 @@ import click
 import pandas as pd
 from botocore.exceptions import ParamValidationError
 
+from cloudvolume import CloudVolume
+
 from boss_export.libs import bosslib, mortonxyz
 
 SESSION = boto3.Session(profile_name="icc")
@@ -15,11 +17,12 @@ SQS_NAME = "copy-boss-cuboids"
 
 # globals
 DEST_BUCKET = "open-neurodata-test"  # testing location
+# DEST_BUCKET = "open-neurodata"  # actual location
 
-PUBLIC_METADATA = "scripts/public_datasets_scales.csv"
+PUBLIC_METADATA = "scripts/public_datasets_downsample.csv"
 
 T = 0  # this is always 0
-CUBE_SIZE = 512, 512, 16
+CUBE_SIZE = 512, 512, 16  # constant for BOSS
 
 
 def send_message(queue, msg):
@@ -91,10 +94,64 @@ def get_ch_metadata(coll, exp, ch):
     returns as a dict the row from the csv file with metadata about this channel
     """
 
-    df = pd.read_csv(PUBLIC_METADATA, index_col=0)
+    # read and parse the CSV file that contains all the public datasets
+    df = pd.read_csv(PUBLIC_METADATA)
     df = df[(df["coll"] == coll) & (df["exp"] == exp) & (df["ch"] == ch)]
+    metadata = df.to_dict(orient="records")[0]
 
-    return df.to_dict(orient="records")[0]
+    # generate the path to the precomputed volume
+    layer_path = "_".join((metadata["coll"], metadata["exp"], metadata["ch"]))
+    metadata["path"] = f"s3://{DEST_BUCKET}/{layer_path}/"
+
+    # set some metadata about the channel
+    if metadata["dtype"] in ["uint8", "uint16"]:
+        metadata["layer_type"] = "image"
+        metadata["encoding"] = "raw"
+    else:
+        # metadata["layer_type"] = "segmentation"
+        # metadata["encoding"] = "compressed_segmentation"
+        raise ValueError("Segmentations not supported yet")
+
+    # get the scale for res 0 data
+    metadata["scale"] = bosslib.get_scale(
+        metadata["x_voxel_size"],
+        metadata["y_voxel_size"],
+        metadata["z_voxel_size"],
+        metadata["voxel_unit"],
+    )
+
+    # get the extent, offset, and volume size of the data
+    metadata["extent"] = metadata["x_stop"], metadata["y_stop"], metadata["z_stop"]
+    metadata["offset"] = metadata["x_start"], metadata["y_start"], metadata["z_start"]
+
+    # volume size is the actual volume that data exists in (like the size of a numpy array)
+    metadata["volume_size"] = tuple(
+        e - o for e, o in zip(metadata["extent"], metadata["offset"])
+    )
+
+    return metadata
+
+
+def create_precomputed_volume(metadata):
+    info = CloudVolume.create_new_info(
+        num_channels=1,
+        layer_type=metadata["layer_type"],
+        data_type=metadata["dtype"],  # Channel images might be 'uint8'
+        encoding=metadata[
+            "encoding"
+        ],  # raw, jpeg, compressed_segmentation, fpzip, kempressed
+        resolution=metadata["scale"],  # Voxel scaling, units are in nanometers
+        voxel_offset=metadata["offset"],  # x,y,z offset in voxels from the origin
+        # Pick a convenient size for your underlying chunk representation
+        # Powers of two are recommended, doesn't need to cover image exactly
+        chunk_size=CUBE_SIZE,  # units are voxels
+        volume_size=metadata["extent"],  # units are voxels
+    )
+
+    # this requires write access to the bucket
+    vol = CloudVolume(metadata["path"], info=info)
+
+    vol.commit_info()
 
 
 @click.command()
@@ -106,8 +163,8 @@ def gen_messages(coll, exp, ch):
     # get the metadata for this channel
     ch_metadata = get_ch_metadata(coll, exp, ch)
 
-    # assert that we're not doing annotations
-    assert ch_metadata["dtype"] != "uint64"
+    # create the precomputed volume
+    create_precomputed_volume(ch_metadata)
 
     # iterate through dataset, generating s3keys, and send them to queue
     send_messages(ch_metadata)

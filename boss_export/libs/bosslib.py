@@ -97,3 +97,20 @@ def get_boss_data(s3resource, s3Bucket, s3Key, dtype, cube_size):
     data = np.frombuffer(rawdata, dtype=dtype)
 
     return data.reshape(cube_size[::-1])
+
+
+def get_scale(x_voxel_size, y_voxel_size, z_voxel_size, voxel_unit):
+    """return scale in (x, y, z) nanometers at base resolution
+    """
+
+    multiplier = 1
+    if voxel_unit == "micrometers":
+        multiplier = 1000
+    elif voxel_unit == "millimeters":
+        multiplier = 1000000
+    elif voxel_unit == "centimeters":
+        multiplier = 1e7
+
+    scale = tuple(v * multiplier for v in (x_voxel_size, y_voxel_size, z_voxel_size))
+
+    return scale

@@ -34,4 +34,4 @@ for _, row in df.iterrows():
 
 df["downsample_status"] = downsamples
 
-df.to_csv("scripts/public_datasets_downsample.csv")
+df.to_csv("scripts/public_datasets_downsample.csv", index=False)
