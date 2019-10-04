@@ -2,16 +2,26 @@
 outputs messages in SQS for every cuboid in BOSS
 """
 
+import os
+
 import boto3
 import click
 import pandas as pd
 from botocore.exceptions import ParamValidationError
 
+from boss_export.libs import bosslib, mortonxyz
 from cloudvolume import CloudVolume
 
-from boss_export.libs import bosslib, mortonxyz
-
 SESSION = boto3.Session(profile_name="icc")
+
+# if we set env. variables,
+# and it doesn't find the secret in ~/.cloudvolume
+# then cloudvolume uses them
+credentials = SESSION.get_credentials()
+os.environ["AWS_ACCESS_KEY_ID"] = credentials.access_key
+os.environ["AWS_SECRET_ACCESS_KEY"] = credentials.secret_key
+
+
 SQS = SESSION.resource("sqs")
 SQS_NAME = "copy-boss-cuboids"
 
@@ -48,9 +58,7 @@ def gen_message(s3key, metadata):
     # dest_layer = "image_test"
     # base_scale = 4, 4, 40
     # dtype = "uint8"
-    msg = metadata.update({"s3key": s3key})
-
-    return msg
+    pass
 
 
 def create_key(xx, yy, zz, coll_id, exp_id, ch_id, res, offset):
@@ -84,8 +92,8 @@ def send_messages(metadata):
 
                     s3key = create_key(xx, yy, zz, coll_id, exp_id, ch_id, res, offset)
 
-                    msg = gen_message(s3key, metadata)
-                    send_message(queue, msg)
+                    metadata.update({"s3key": s3key})
+                    send_message(queue, metadata)
                     break
 
 
@@ -100,7 +108,7 @@ def get_ch_metadata(coll, exp, ch):
     metadata = df.to_dict(orient="records")[0]
 
     # generate the path to the precomputed volume
-    layer_path = "_".join((metadata["coll"], metadata["exp"], metadata["ch"]))
+    layer_path = "/".join((metadata["coll"], metadata["exp"], metadata["ch"]))
     metadata["path"] = f"s3://{DEST_BUCKET}/{layer_path}/"
 
     # set some metadata about the channel
