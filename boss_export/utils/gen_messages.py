@@ -2,6 +2,7 @@
 outputs messages in SQS for every cuboid in BOSS
 """
 
+import json
 import os
 
 import boto3
@@ -50,29 +51,7 @@ def create_or_get_queue():
     return queue
 
 
-def gen_message(s3key, metadata):
-    # dest_layer, scale, cube_size, dtype, extent, offset
-
-    # s3Key
-    # dest_dataset = "bock11_test"
-    # dest_layer = "image_test"
-    # base_scale = 4, 4, 40
-    # dtype = "uint8"
-    pass
-
-
-def create_key(xx, yy, zz, coll_id, exp_id, ch_id, res, offset):
-    x_i, y_i, z_i = [i // cubes for i, cubes, o in zip([xx, yy, zz], CUBE_SIZE, offset)]
-    mortonid = mortonxyz.XYZMorton(x_i, y_i, z_i)
-
-    s3key = bosslib.ret_boss_key(coll_id, exp_id, ch_id, res, T, mortonid)
-
-    return s3key
-
-
-def send_messages(metadata):
-    queue = create_or_get_queue()
-
+def return_messages(metadata):
     # coll,exp,ch,exp_description,num_hierarchy_levels,dtype,x_start,x_stop,y_start,y_stop,z_start,z_stop,coll_ids,exp_ids,ch_ids
     # kharris15,apical,em,Apical Dendrite Volume,3,uint8,0,8192,0,8192,0,194,4,2,2
 
@@ -84,17 +63,57 @@ def send_messages(metadata):
 
     # iterate over res
     res_levels = metadata["num_hierarchy_levels"]
+    msgs = []
     for res in range(res_levels):  # w/ 4 levels, you have 0,1,2,3
-        # iterate through the x,y,z
-        for xx in range(offset[0], extent[0], CUBE_SIZE[0]):
-            for yy in range(offset[1], extent[1], CUBE_SIZE[1]):
-                for zz in range(offset[2], extent[2], CUBE_SIZE[2]):
+        scale_at_res = [s * 2 ** res for s in metadata["scale"][0:2]] + [
+            metadata["scale"][2]
+        ]
 
+        cube_scale = [s * 2 ** res for s in CUBE_SIZE[0:2]] + [CUBE_SIZE[2]]
+
+        # iterate through the x,y,z
+        for xx in range(offset[0], extent[0], cube_scale[0]):
+            for yy in range(offset[1], extent[1], cube_scale[1]):
+                for zz in range(offset[2], extent[2], cube_scale[2]):
+                    cube_metadata = dict(metadata)
                     s3key = create_key(xx, yy, zz, coll_id, exp_id, ch_id, res, offset)
 
-                    metadata.update({"s3key": s3key})
-                    send_message(queue, metadata)
-                    break
+                    cube_info = {
+                        "s3key": s3key,
+                        "x": xx,
+                        "y": yy,
+                        "z": zz,
+                        "res": res,
+                        "scale_at_res": scale_at_res,  # in nanometers
+                        "cube_scale": cube_scale,
+                    }
+
+                    cube_metadata.update(cube_info)
+                    msgs.append(cube_metadata)
+    return msgs
+
+
+def create_key(xx, yy, zz, coll_id, exp_id, ch_id, res, offset):
+    x_i, y_i, z_i = [i // cubes for i, cubes, o in zip([xx, yy, zz], CUBE_SIZE, offset)]
+    mortonid = mortonxyz.XYZMorton(x_i, y_i, z_i)
+
+    s3key = bosslib.ret_boss_key(coll_id, exp_id, ch_id, res, T, mortonid)
+
+    return s3key
+
+
+def send_messages(msgs):
+    queue = create_or_get_queue()
+    maxBatchSize = 10  # current maximum allowed
+
+    chunks = [msgs[x : x + maxBatchSize] for x in range(0, len(msgs), maxBatchSize)]
+    for chunk in chunks:
+        entries = []
+        for x in chunk:
+            Id = x["s3key"].split("&")[0]
+            entry = {"Id": Id, "MessageBody": json.dumps(x)}
+            entries.append(entry)
+        queue.send_messages(Entries=entries)
 
 
 def get_ch_metadata(coll, exp, ch):
@@ -174,8 +193,10 @@ def gen_messages(coll, exp, ch):
     # create the precomputed volume
     create_precomputed_volume(ch_metadata)
 
+    msgs = return_messages(ch_metadata)
+
     # iterate through dataset, generating s3keys, and send them to queue
-    send_messages(ch_metadata)
+    send_messages(msgs)
 
 
 if __name__ == "__main__":
