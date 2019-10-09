@@ -36,10 +36,6 @@ T = 0  # this is always 0
 CUBE_SIZE = 512, 512, 16  # constant for BOSS
 
 
-def send_message(queue, msg):
-    queue.send_message(MessageBody=msg)
-
-
 def create_or_get_queue():
     try:
         queue = SQS.create_queue(
@@ -51,15 +47,38 @@ def create_or_get_queue():
     return queue
 
 
+def create_cube_metadata(metadata, xx, yy, zz, res, scale_at_res, cube_scale):
+    coll_id = metadata["coll_ids"]
+    exp_id = metadata["exp_ids"]
+    ch_id = metadata["ch_ids"]
+    offset = metadata["x_start"], metadata["y_start"], metadata["z_start"]
+
+    cube_metadata = dict(metadata)
+    s3key = create_key(xx, yy, zz, coll_id, exp_id, ch_id, res, offset)
+
+    cube_info = {
+        "s3key": s3key,
+        "x": xx,
+        "y": yy,
+        "z": zz,
+        "res": res,
+        "scale_at_res": scale_at_res,  # in nanometers
+        "cube_scale": cube_scale,
+    }
+
+    cube_metadata.update(cube_info)
+
+    return cube_metadata
+
+
 def return_messages(metadata):
+    """Given metadata about a dataset, generate messages for each cuboid to transfer"""
+
     # coll,exp,ch,exp_description,num_hierarchy_levels,dtype,x_start,x_stop,y_start,y_stop,z_start,z_stop,coll_ids,exp_ids,ch_ids
     # kharris15,apical,em,Apical Dendrite Volume,3,uint8,0,8192,0,8192,0,194,4,2,2
 
     offset = metadata["x_start"], metadata["y_start"], metadata["z_start"]
     extent = metadata["x_stop"], metadata["y_stop"], metadata["z_stop"]
-    coll_id = metadata["coll_ids"]
-    exp_id = metadata["exp_ids"]
-    ch_id = metadata["ch_ids"]
 
     # iterate over res
     res_levels = metadata["num_hierarchy_levels"]
@@ -75,20 +94,9 @@ def return_messages(metadata):
         for xx in range(offset[0], extent[0], cube_scale[0]):
             for yy in range(offset[1], extent[1], cube_scale[1]):
                 for zz in range(offset[2], extent[2], cube_scale[2]):
-                    cube_metadata = dict(metadata)
-                    s3key = create_key(xx, yy, zz, coll_id, exp_id, ch_id, res, offset)
-
-                    cube_info = {
-                        "s3key": s3key,
-                        "x": xx,
-                        "y": yy,
-                        "z": zz,
-                        "res": res,
-                        "scale_at_res": scale_at_res,  # in nanometers
-                        "cube_scale": cube_scale,
-                    }
-
-                    cube_metadata.update(cube_info)
+                    cube_metadata = create_cube_metadata(
+                        metadata, xx, yy, zz, res, scale_at_res, cube_scale
+                    )
                     msgs.append(cube_metadata)
     return msgs
 
@@ -160,6 +168,8 @@ def get_ch_metadata(coll, exp, ch):
 
 
 def create_precomputed_volume(metadata):
+    """Use CloudVolume to create the precomputed info file"""
+
     info = CloudVolume.create_new_info(
         num_channels=1,
         layer_type=metadata["layer_type"],

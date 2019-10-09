@@ -3,36 +3,30 @@ Consumes messages from an sqs queue
 Output is a neuroglancer gzip compressed object at the correct path and bucket
 """
 
+import json
+
 import boto3
 
 from boss_export.libs import bosslib, mortonxyz, ngprecomputed
 
-# TODO: specify these in an SQS message
-DEST_BUCKET = "nd-precomputed-volumes"
-DEST_DATASET = "bock11_test"
-DEST_LAYER = "image_test"
-BASE_SCALE = 4, 4, 40
-CUBE_SIZE = 512, 512, 16
-dtype = "uint8"
-EXTENT = 135424, 119808, 4156  # x, y, z
-OFFSET = 0, 0, 2917
-
 # will get credentials from role it's running under
 S3_RESOURCE = boto3.resource("s3")
 
+BOSS_BUCKET = "cuboids.production.neurodata"
+CUBE_SIZE = 512, 512, 16  # boss cube size
 
-def lambda_handler(event, context):
-    # Parse job parameters
-    invocationSchemaVersion = event["invocationSchemaVersion"]
-    invocationId = event["invocationId"]
 
-    # Process the task
-    task = event["tasks"][0]
-    taskId = task["taskId"]
-    s3Key = task["s3Key"]
-    s3BucketArn = task["s3BucketArn"]
-    s3Bucket = s3BucketArn.split(":")[-1]
-    print("BatchProcessObject(" + s3Bucket + "/" + s3Key + ")")
+def convert_cuboid(msg):
+    s3Key = msg["s3key"]
+    dtype = msg["dtype"]
+    extent = msg["extent"]
+    offset = msg["offset"]
+    scale = msg["scale"]  # for res 0
+    scale_at_res = msg["scale_at_res"]
+    res = msg["res"]
+    x = msg["x"]
+    y = msg["y"]
+    z = msg["z"]
 
     # object naming
     # - decode the object name into its parts: morton ID, res, table keys
@@ -40,16 +34,18 @@ def lambda_handler(event, context):
 
     # get obj
     # decompress the object from boss format to numpy
-    data_array = bosslib.get_boss_data(S3_RESOURCE, s3Bucket, s3Key, dtype, CUBE_SIZE)
+    data_array = bosslib.get_boss_data(
+        S3_RESOURCE, BOSS_BUCKET, s3Key, dtype, CUBE_SIZE
+    )
 
     # get the coordinates of the cube
     xyz_coords = mortonxyz.get_coords(bosskey.mortonid, CUBE_SIZE)
 
     # need to reshape and reset size when at edges
-    data_array = ngprecomputed.crop_to_extent(data_array, xyz_coords, EXTENT)
+    data_array = ngprecomputed.crop_to_extent(data_array, xyz_coords, extent)
 
     # boss mortonid has offset embedded in it
-    ngmorton = ngprecomputed.ngmorton(bosskey.mortonid, CUBE_SIZE, OFFSET)
+    ngmorton = ngprecomputed.ngmorton(bosskey.mortonid, CUBE_SIZE, offset)
 
     # TODO: handle scale here for res > 0
     # TODO: deal with morton offsets (boss has it, ngprecomputed does not)
@@ -59,7 +55,7 @@ def lambda_handler(event, context):
 
     # compute neuroglancer key (w/ offset in name)
     chunk_name = ngprecomputed.get_chunk_name(
-        ngmorton, BASE_SCALE, bosskey.res, shape, OFFSET
+        ngmorton, scale, bosskey.res, shape, offset
     )
     ngkey = ngprecomputed.get_ng_key(DEST_DATASET, DEST_LAYER, chunk_name)
 
@@ -70,13 +66,9 @@ def lambda_handler(event, context):
     # save object to the target bucket and path
     ngprecomputed.save_obj(S3_RESOURCE, DEST_BUCKET, ngkey, ngdata)
 
-    results = [
-        {"taskId": taskId, "resultCode": "Succeeded", "resultString": "Succeeded"}
-    ]
 
-    return {
-        "invocationSchemaVersion": invocationSchemaVersion,
-        "treatMissingKeysAs": "PermanentFailure",  # other options are "Successful", "TemporaryFailure"
-        "invocationId": invocationId,
-        "results": results,
-    }
+def lambda_handler(event, context):
+    for record in event["Records"]:
+        msg = json.loads(record["messageAttributes"])
+        print(msg)
+        convert_cuboid(msg)

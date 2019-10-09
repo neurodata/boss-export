@@ -3,6 +3,6 @@ boto3
 morton-py
 numpy
 requests
-cloud-volume
 pandas
 click
+-e git+git://github.com/neurodata/cloud-volume@set-acl-s3#egg=cloud-volume
