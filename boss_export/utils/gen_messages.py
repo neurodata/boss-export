@@ -81,7 +81,10 @@ def return_messages(metadata):
     extent = metadata["x_stop"], metadata["y_stop"], metadata["z_stop"]
 
     # iterate over res
-    res_levels = metadata["num_hierarchy_levels"]
+    if metadata["downsample_status"] == "DOWNSAMPLED":
+        res_levels = metadata["num_hierarchy_levels"]
+    else:
+        res_levels = 1  # only one level (res 0)
     msgs = []
     for res in range(res_levels):  # w/ 4 levels, you have 0,1,2,3
         scale_at_res = [s * 2 ** res for s in metadata["scale"][0:2]] + [
@@ -136,6 +139,9 @@ def get_ch_metadata(coll, exp, ch):
 
     # generate the path to the precomputed volume
     layer_path = "/".join((metadata["coll"], metadata["exp"], metadata["ch"]))
+
+    metadata["layer_path"] = layer_path
+    metadata["dest_bucket"] = DEST_BUCKET
     metadata["path"] = f"s3://{DEST_BUCKET}/{layer_path}/"
 
     # set some metadata about the channel
@@ -188,6 +194,14 @@ def create_precomputed_volume(metadata):
     # this requires write access to the bucket
     vol = CloudVolume(metadata["path"], info=info)
 
+    if metadata["downsample_status"] == "DOWNSAMPLED":
+        res_levels = metadata["num_hierarchy_levels"]
+    else:
+        res_levels = 1  # only one level (res 0)
+
+    for res in range(1, res_levels):
+        vol.add_scale((2 ** res, 2 ** res, 1), chunk_size=(512, 512, 16))
+
     vol.commit_info()
 
 
@@ -195,6 +209,7 @@ def create_precomputed_volume(metadata):
 @click.argument("coll")
 @click.argument("exp")
 @click.argument("ch")
+# "ZBrain", "ZBrain", "ZBB_y385-Cre"
 def gen_messages(coll, exp, ch):
 
     # get the metadata for this channel

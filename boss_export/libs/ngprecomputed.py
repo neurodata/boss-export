@@ -1,5 +1,6 @@
 import gzip
 
+import numpy as np
 import requests
 
 from boss_export.libs import chunks, mortonxyz
@@ -27,7 +28,9 @@ def get_res_from_ngkey(voxel_size, scales):
 def xyz_cube_idx_from_xyz_act(xyz_act, cube_size, offset):
     """mortonid in neuroglancer has no offset
     """
-    xyz_no_offset = [(xyz - o) / c for xyz, c, o in zip(xyz_act, cube_size, offset)]
+    xyz_no_offset = [
+        int((xyz - o) / c) for xyz, c, o in zip(xyz_act, cube_size, offset)
+    ]
 
     return xyz_no_offset
 
@@ -76,24 +79,31 @@ def get_scale(base_scale, res, iso=False):
 
 
 def numpy_chunk(data_array):
-    comp_array = gzip.compress(chunks.encode_raw(data_array))
+    data_xyz = np.transpose(data_array, (2, 1, 0))
+    comp_array = gzip.compress(chunks.encode_raw(data_xyz))
     return comp_array
 
 
 def get_ng_key(dataset, layer, chunk_name):
-    ngkey = f"{dataset}/{layer}/{chunk_name}"
+    if layer:
+        ngkey = f"{dataset}/{layer}/{chunk_name}"
+    else:
+        ngkey = f"{dataset}/{chunk_name}"
 
     return ngkey
 
 
-def get_chunk_name(mortonid, basescale, res, shape, offset=[0, 0, 0], iso=False):
+def get_chunk_name(
+    mortonid, basescale, res, cube_shape, array_shape, offset=[0, 0, 0], iso=False
+):
     """
     this returns neuroglancer cube name (minus the volume info)
     mortonid starts from 0 *without the offset*
     offset is added to the s3key string
-    >> s3key = get_chunk_name(0, (4, 4, 40), 0, (512, 512, 16), (0, 0, 2917))
-    >> s3key
-    "4_4_40/0-512_0-512_2917-2933"
+
+    array_shape is zyz order (numpy ordered)
+
+    >> s3key = get_chunk_name(0, (4, 4, 40), 0, (512, 512, 16), (16, 109, 512), (0, 0, 2917))
     """
 
     # ref FULL key: s3://nd-precomputed-volumes/bock11/image/32_32_40/7168-7680_6144-6656_2917-2981
@@ -101,8 +111,8 @@ def get_chunk_name(mortonid, basescale, res, shape, offset=[0, 0, 0], iso=False)
     xyz = mortonxyz.MortonXYZ(int(mortonid))
     xyz_str = "_".join(
         [
-            "-".join([str(i * c + o), str(i * c + o + c)])
-            for i, c, o in zip(xyz, shape, offset)
+            "-".join([str(i * c + o), str(i * c + o + c + (a - c))])
+            for i, c, o, a in zip(xyz, cube_shape, offset, array_shape[::-1])
         ]
     )
 
@@ -125,18 +135,22 @@ def crop_to_extent(data, xyz, extent):
     return data_clip
 
 
-def save_obj(s3_resource, bucket, ngkey, data):
+def save_obj(s3_resource, bucket, ngkey, data, storage_class=None):
     """Saves data into a bucket with the parameters needed for neuroglancer
     Returns: dict
     """
+
+    if storage_class is None:
+        storage_class = "INTELLIGENT_TIERING"
+
     obj = s3_resource.Object(bucket, ngkey)
     resp = obj.put(
         Body=data,
-        StorageClass="INTELLIGENT_TIERING",
+        StorageClass=storage_class,
         CacheControl="max-age=3600, s-max-age=3600",
         ContentEncoding="gzip",
         ContentType="application/octet-stream",
-        ACL="bucket-owner-full-control",
+        ACL="public-read",
     )
 
     return resp

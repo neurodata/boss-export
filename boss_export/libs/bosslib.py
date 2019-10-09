@@ -111,6 +111,8 @@ def get_scale(x_voxel_size, y_voxel_size, z_voxel_size, voxel_unit):
     elif voxel_unit == "centimeters":
         multiplier = 1e7
 
-    scale = tuple(v * multiplier for v in (x_voxel_size, y_voxel_size, z_voxel_size))
+    scale = tuple(
+        int(v * multiplier) for v in (x_voxel_size, y_voxel_size, z_voxel_size)
+    )
 
     return scale

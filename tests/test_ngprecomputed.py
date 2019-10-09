@@ -71,11 +71,14 @@ def test_ng_key():
 def test_get_chunk_name():
     basescale = 4, 4, 40
     res = 3
-    shape = 512, 512, 16
+    cube_shape = 512, 512, 16
+    array_shape = 16, 512, 512
     offset = 0, 0, 2917
 
     mortonid = 0
-    chunk_name = ngprecomputed.get_chunk_name(mortonid, basescale, res, shape, offset)
+    chunk_name = ngprecomputed.get_chunk_name(
+        mortonid, basescale, res, cube_shape, array_shape, offset
+    )
     assert "32_32_40/0-512_0-512_2917-2933" == chunk_name
 
     mortonid = 14
@@ -83,8 +86,29 @@ def test_get_chunk_name():
     # xyz = [2,1,1]
 
     res = 0
-    chunk_name = ngprecomputed.get_chunk_name(mortonid, basescale, res, shape, offset)
+    chunk_name = ngprecomputed.get_chunk_name(
+        mortonid, basescale, res, cube_shape, array_shape, offset
+    )
     assert f"4_4_40/{512*2}-{512*3}_{512*1}-{512*2}_{2917+16}-{2917+16*2}" == chunk_name
+
+
+def test_get_chunk_name_crop():
+    # ,295,[512, 512, 11cube_shaped63f2fa28ecd8ef1a1884a787&36&116&869&0&0&295&0,[798.0, 798.0, 2000.0],(16, 109, 512)
+    # extent = [1406, 621, 138]
+
+    mortonid = 295
+    basescale = [798.0, 798.0, 2000.0]
+    array_shape = (16, 109, 512)
+    cube_shape = (512, 512, 16)
+    offset = [0, 0, 0]
+    res = 0
+    chunk_name = ngprecomputed.get_chunk_name(
+        mortonid, basescale, res, cube_shape, array_shape, offset
+    )
+
+    chunk_name_correct = "798.0_798.0_2000.0/512-1024_512-621_112-128"
+
+    assert chunk_name == chunk_name_correct
 
 
 def test_limit_to_extent():

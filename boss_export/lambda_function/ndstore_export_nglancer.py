@@ -62,7 +62,7 @@ def lambda_handler(event, context):
 
     # compute neuroglancer key (w/ offset in name)
     chunk_name = ngprecomputed.get_chunk_name(
-        ndstorekey.mortonid, BASE_SCALE, ndstorekey.res, shape, OFFSET
+        ndstorekey.mortonid, BASE_SCALE, ndstorekey.res, CUBE_SIZE, shape, OFFSET
     )
     ngkey = ngprecomputed.get_ng_key(DEST_DATASET, DEST_LAYER, chunk_name)
 

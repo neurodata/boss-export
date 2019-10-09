@@ -9,8 +9,12 @@ import boto3
 
 from boss_export.libs import bosslib, mortonxyz, ngprecomputed
 
-# will get credentials from role it's running under
-S3_RESOURCE = boto3.resource("s3")
+# should get credentials from role it's running under
+try:
+    SESSION = boto3.Session(profile_name="boss-s3")
+    S3_RESOURCE = SESSION.resource("s3")
+except:
+    S3_RESOURCE = boto3.resource("s3")
 
 BOSS_BUCKET = "cuboids.production.neurodata"
 CUBE_SIZE = 512, 512, 16  # boss cube size
@@ -22,11 +26,9 @@ def convert_cuboid(msg):
     extent = msg["extent"]
     offset = msg["offset"]
     scale = msg["scale"]  # for res 0
-    scale_at_res = msg["scale_at_res"]
-    res = msg["res"]
-    x = msg["x"]
-    y = msg["y"]
-    z = msg["z"]
+    # scale = msg["scale_at_res"]
+    dest_dataset = msg["layer_path"]
+    dest_bucket = msg["dest_bucket"]
 
     # object naming
     # - decode the object name into its parts: morton ID, res, table keys
@@ -55,16 +57,16 @@ def convert_cuboid(msg):
 
     # compute neuroglancer key (w/ offset in name)
     chunk_name = ngprecomputed.get_chunk_name(
-        ngmorton, scale, bosskey.res, shape, offset
+        ngmorton, scale, bosskey.res, CUBE_SIZE, shape, offset
     )
-    ngkey = ngprecomputed.get_ng_key(DEST_DATASET, DEST_LAYER, chunk_name)
+    ngkey = ngprecomputed.get_ng_key(dest_dataset, None, chunk_name)
 
     # saving it out
     # compress the object to neuroglancer format (gzip serialized numpy)
     ngdata = ngprecomputed.numpy_chunk(data_array)
 
     # save object to the target bucket and path
-    ngprecomputed.save_obj(S3_RESOURCE, DEST_BUCKET, ngkey, ngdata)
+    ngprecomputed.save_obj(S3_RESOURCE, dest_bucket, ngkey, ngdata, "STANDARD")
 
 
 def lambda_handler(event, context):
