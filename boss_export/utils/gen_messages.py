@@ -106,7 +106,7 @@ def send_messages(msgs):
     queue = create_or_get_queue()
     maxBatchSize = 10  # current maximum allowed
 
-    chunks = [msgs[x : x + maxBatchSize] for x in range(0, len(msgs), maxBatchSize)]
+    chunks = (msgs[x : x + maxBatchSize] for x in range(0, len(msgs), maxBatchSize))
     for chunk in chunks:
         entries = []
         for x in chunk:
