@@ -1,5 +1,6 @@
 import gzip
 
+import brotli
 import numpy as np
 import requests
 
@@ -78,9 +79,15 @@ def get_scale(base_scale, res, iso=False):
     return scale
 
 
-def numpy_chunk(data_array):
+def numpy_chunk(data_array, compression="gzip"):
     data_xyz = np.transpose(data_array, (2, 1, 0))
-    comp_array = gzip.compress(chunks.encode_raw(data_xyz))
+    if compression == "gzip":  # gzip
+        comp_array = gzip.compress(chunks.encode_raw(data_xyz))
+    elif compression == "br":  # brotli
+        comp_array = brotli.compress(chunks.encode_raw(data_xyz))
+    else:  # raw
+        comp_array = chunks.encode_raw(data_xyz)
+
     return comp_array
 
 
@@ -135,7 +142,9 @@ def crop_to_extent(data, xyz, extent):
     return data_clip
 
 
-def save_obj(s3_resource, bucket, ngkey, data, storage_class=None):
+def save_obj(
+    s3_resource, bucket, ngkey, data, storage_class=None, content_encoding="gzip"
+):
     """Saves data into a bucket with the parameters needed for neuroglancer
     Returns: dict
     """
@@ -148,7 +157,7 @@ def save_obj(s3_resource, bucket, ngkey, data, storage_class=None):
         Body=data,
         StorageClass=storage_class,
         CacheControl="max-age=3600, s-max-age=3600",
-        ContentEncoding="gzip",
+        ContentEncoding=content_encoding,
         ContentType="application/octet-stream",
         ACL="public-read",
     )

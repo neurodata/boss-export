@@ -18,6 +18,7 @@ except:
 
 BOSS_BUCKET = "cuboids.production.neurodata"
 CUBE_SIZE = 512, 512, 16  # boss cube size
+COMPRESSION = "br"
 
 
 def convert_cuboid(msg):
@@ -63,10 +64,12 @@ def convert_cuboid(msg):
 
     # saving it out
     # compress the object to neuroglancer format (gzip serialized numpy)
-    ngdata = ngprecomputed.numpy_chunk(data_array)
+    ngdata = ngprecomputed.numpy_chunk(data_array, COMPRESSION)
 
     # save object to the target bucket and path
-    ngprecomputed.save_obj(S3_RESOURCE, dest_bucket, ngkey, ngdata, "STANDARD")
+    ngprecomputed.save_obj(
+        S3_RESOURCE, dest_bucket, ngkey, ngdata, "STANDARD", COMPRESSION
+    )
 
 
 def lambda_handler(event, context):
