@@ -84,7 +84,7 @@ def numpy_chunk(data_array, compression="gzip"):
     if compression == "gzip":  # gzip
         comp_array = gzip.compress(chunks.encode_raw(data_xyz))
     elif compression == "br":  # brotli
-        comp_array = brotli.compress(chunks.encode_raw(data_xyz))
+        comp_array = brotli.compress(chunks.encode_raw(data_xyz), quality=6)
     else:  # raw
         comp_array = chunks.encode_raw(data_xyz)
 

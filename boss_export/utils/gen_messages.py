@@ -23,7 +23,7 @@ os.environ["AWS_ACCESS_KEY_ID"] = credentials.access_key
 os.environ["AWS_SECRET_ACCESS_KEY"] = credentials.secret_key
 
 
-SQS = SESSION.resource("sqs")
+SQS = SESSION.resource("sqs", region_name="us-east-1")
 SQS_NAME = "copy-boss-cuboids"
 
 # globals

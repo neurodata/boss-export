@@ -31,6 +31,8 @@ def convert_cuboid(msg):
     dest_dataset = msg["layer_path"]
     dest_bucket = msg["dest_bucket"]
 
+    print("Starting", s3Key)
+
     # object naming
     # - decode the object name into its parts: morton ID, res, table keys
     bosskey = bosslib.parts_from_bosskey(s3Key)
@@ -71,9 +73,10 @@ def convert_cuboid(msg):
         S3_RESOURCE, dest_bucket, ngkey, ngdata, "STANDARD", COMPRESSION
     )
 
+    print("Converted to:", ngkey)
+
 
 def lambda_handler(event, context):
     for record in event["Records"]:
         msg = json.loads(record["messageAttributes"])
-        print(msg)
         convert_cuboid(msg)
