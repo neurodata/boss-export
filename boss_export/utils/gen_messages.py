@@ -4,6 +4,7 @@ outputs messages in SQS for every cuboid in BOSS
 
 import itertools
 import json
+import math
 import os
 
 import boto3
@@ -48,7 +49,7 @@ def create_or_get_queue():
     return queue
 
 
-def create_cube_metadata(metadata, xx, yy, zz, res, scale_at_res, cube_scale):
+def create_cube_metadata(metadata, xx, yy, zz, res, scale_at_res, extent_at_res):
     coll_id = metadata["coll_ids"]
     exp_id = metadata["exp_ids"]
     ch_id = metadata["ch_ids"]
@@ -64,7 +65,7 @@ def create_cube_metadata(metadata, xx, yy, zz, res, scale_at_res, cube_scale):
         "z": zz,
         "res": res,
         "scale_at_res": scale_at_res,  # in nanometers
-        "cube_scale": cube_scale,
+        "extent_at_res": extent_at_res,
     }
 
     cube_metadata.update(cube_info)
@@ -72,11 +73,11 @@ def create_cube_metadata(metadata, xx, yy, zz, res, scale_at_res, cube_scale):
     return cube_metadata
 
 
-def return_xyz_keys(offset, extent, cube_scale):
+def return_xyz_keys(offset, extent, cube_size):
     # iterate through the x,y,z
-    for xx in range(offset[0], extent[0], cube_scale[0]):
-        for yy in range(offset[1], extent[1], cube_scale[1]):
-            for zz in range(offset[2], extent[2], cube_scale[2]):
+    for xx in range(offset[0], extent[0], cube_size[0]):
+        for yy in range(offset[1], extent[1], cube_size[1]):
+            for zz in range(offset[2], extent[2], cube_size[2]):
                 yield (xx, yy, zz)
 
 
@@ -99,12 +100,11 @@ def return_messages(metadata):
         scale_at_res = [s * 2 ** res for s in metadata["scale"][0:2]] + [
             metadata["scale"][2]
         ]
+        extent_at_res = [math.ceil(e / 2 ** res) for e in extent[0:2]] + [extent[2]]
 
-        cube_scale = [s * 2 ** res for s in CUBE_SIZE[0:2]] + [CUBE_SIZE[2]]
-
-        for xx, yy, zz in return_xyz_keys(offset, extent, cube_scale):
+        for xx, yy, zz in return_xyz_keys(offset, extent_at_res, CUBE_SIZE):
             cube_metadata = create_cube_metadata(
-                metadata, xx, yy, zz, res, scale_at_res, cube_scale
+                metadata, xx, yy, zz, res, scale_at_res, extent_at_res
             )
             yield cube_metadata
 

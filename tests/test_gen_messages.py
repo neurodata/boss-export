@@ -36,7 +36,7 @@ def test_msg_creation():
     #     "z": 0,
     #     "res": 0,
     #     "scale_at_res": [798.0, 798.0, 2000.0],
-    #     "cube_scale": [512, 512, 16],
+    #     "extent_at_res": [],
     # }
 
     expected_keys = [
@@ -73,21 +73,21 @@ def test_msg_creation():
         "z",
         "res",
         "scale_at_res",
-        "cube_scale",
+        "extent_at_res",
     ]
 
     ch_metadata = gen_messages.get_ch_metadata("ZBrain", "ZBrain", "ZBB_y385-Cre")
 
-    xx, yy, zz, res, scale_at_res, cube_scale = (
+    xx, yy, zz, res, scale_at_res, extent_at_res = (
         0,
         0,
         0,
         0,
         [798.0, 798.0, 2000.0],
-        [512, 512, 16],
+        ch_metadata["extent_at_res"],
     )
     msg = gen_messages.create_cube_metadata(
-        ch_metadata, xx, yy, zz, res, scale_at_res, cube_scale
+        ch_metadata, xx, yy, zz, res, scale_at_res, extent_at_res
     )
 
     assert list(msg.keys()) == expected_keys

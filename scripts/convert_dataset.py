@@ -1,10 +1,19 @@
-import json
+# import json
+from multiprocessing import Pool
 
 import click
 
+# import boto3
+# from botocore.errorfactory import ClientError
+
 from boss_export.lambda_function import s3_batch_boss_export_neuroglancer
-from boss_export.libs import bosslib, ngprecomputed, mortonxyz
+
+# from boss_export.libs import bosslib, mortonxyz, ngprecomputed
 from boss_export.utils import gen_messages
+
+# SESSION = boto3.Session(profile_name="boss-s3")
+# S3_CLIENT = SESSION.client("s3")
+# BOSS_BUCKET = "cuboids.production.neurodata"
 
 
 @click.command()
@@ -17,15 +26,36 @@ def convert_dataset(coll, exp, ch):
     gen_messages.create_precomputed_volume(ch_metadata)
     msgs = gen_messages.return_messages(ch_metadata)
 
-    for msg in msgs:
-        # if msg["res"] == 0:
-        #     continue
+    # process the messages in parallel
+    with Pool() as pool:
+        pool.map(
+            s3_batch_boss_export_neuroglancer.convert_cuboid,
+            msgs
+            # (m for m in msgs if m["res"] > 0),
+        )
 
-        try:
-            s3_batch_boss_export_neuroglancer.convert_cuboid(msg)
-        except Exception:
-            print("Failed", msg["s3key"])
+    # processing messages not in parallel with a try/catch (for testing)
+    # for msg in msgs:
+    #     if msg["res"] < 3:
+    #         continue
+    #     try:
+    #         s3_batch_boss_export_neuroglancer.convert_cuboid(msg)
+    #     except Exception:
+    #         print("Failed", msg["s3key"])
 
+    # testing to see if all objects exist in BOSS
+    # i = 0
+    # for msg in msgs:
+    #     s3key = msg["s3key"]
+    #     try:
+    #         S3_CLIENT.head_object(Bucket=BOSS_BUCKET, Key=s3key)
+    #     except ClientError:
+    #         # Not found
+    #         print(s3key, "not found")
+    #     i += 1
+    # print(i, "messages processed")
+
+    # dumping messages to a file for examination
     # with open(f"{coll}_{exp}_{ch}_msgs.txt", "w") as msg_file:
     #     for msg in msgs:
     #         msg_json = json.dumps(msg)
