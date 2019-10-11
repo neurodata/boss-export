@@ -2,6 +2,7 @@
 outputs messages in SQS for every cuboid in BOSS
 """
 
+import itertools
 import json
 import os
 
@@ -71,6 +72,14 @@ def create_cube_metadata(metadata, xx, yy, zz, res, scale_at_res, cube_scale):
     return cube_metadata
 
 
+def return_xyz_keys(offset, extent, cube_scale):
+    # iterate through the x,y,z
+    for xx in range(offset[0], extent[0], cube_scale[0]):
+        for yy in range(offset[1], extent[1], cube_scale[1]):
+            for zz in range(offset[2], extent[2], cube_scale[2]):
+                yield (xx, yy, zz)
+
+
 def return_messages(metadata):
     """Given metadata about a dataset, generate messages for each cuboid to transfer"""
 
@@ -85,7 +94,7 @@ def return_messages(metadata):
         res_levels = metadata["num_hierarchy_levels"]
     else:
         res_levels = 1  # only one level (res 0)
-    msgs = []
+
     for res in range(res_levels):  # w/ 4 levels, you have 0,1,2,3
         scale_at_res = [s * 2 ** res for s in metadata["scale"][0:2]] + [
             metadata["scale"][2]
@@ -93,15 +102,11 @@ def return_messages(metadata):
 
         cube_scale = [s * 2 ** res for s in CUBE_SIZE[0:2]] + [CUBE_SIZE[2]]
 
-        # iterate through the x,y,z
-        for xx in range(offset[0], extent[0], cube_scale[0]):
-            for yy in range(offset[1], extent[1], cube_scale[1]):
-                for zz in range(offset[2], extent[2], cube_scale[2]):
-                    cube_metadata = create_cube_metadata(
-                        metadata, xx, yy, zz, res, scale_at_res, cube_scale
-                    )
-                    msgs.append(cube_metadata)
-    return msgs
+        for xx, yy, zz in return_xyz_keys(offset, extent, cube_scale):
+            cube_metadata = create_cube_metadata(
+                metadata, xx, yy, zz, res, scale_at_res, cube_scale
+            )
+            yield cube_metadata
 
 
 def create_key(xx, yy, zz, coll_id, exp_id, ch_id, res, offset):
@@ -113,12 +118,20 @@ def create_key(xx, yy, zz, coll_id, exp_id, ch_id, res, offset):
     return s3key
 
 
+def chunks(iterable, size=10):
+    """Takes an iterable and chunks it into a generator of chunk size"""
+    # from: https://stackoverflow.com/a/24527424/532963
+
+    iterator = iter(iterable)
+    for first in iterator:
+        yield itertools.chain([first], itertools.islice(iterator, size - 1))
+
+
 def send_messages(msgs):
     queue = create_or_get_queue()
     maxBatchSize = 10  # current maximum allowed
 
-    chunks = (msgs[x : x + maxBatchSize] for x in range(0, len(msgs), maxBatchSize))
-    for chunk in chunks:
+    for chunk in chunks(msgs, maxBatchSize):
         entries = []
         for x in chunk:
             Id = x["s3key"].split("&")[0]

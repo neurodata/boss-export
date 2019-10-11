@@ -64,13 +64,29 @@ def test_get_boss_data():
 
 
 def test_failing_key():
+
     # s3keys failing:
-    # 69a9316f8accc7ac266fb09330eb69f8&36&116&869&1&0&12&0
-    # 9fc173c303c11a9c92ac919bf3218b97&36&116&869&1&0&40&0
-    # 255cd8fdf75360a7137050555926ef8f&36&116&869&1&0&44&0
-    # 72cce57fb2a55441fe7b80d6402ddf95&36&116&869&1&0&264&0
-    # abb2cbc1793aa38b416ad8f76cede328&36&116&869&1&0&268&0
-    # 68c7047c520511bb08b1bbf3acc55434&36&116&869&1&0&296&0
-    # 805115c6340ace0687b16b164d883ad8&36&116&869&1&0&300&0
-    # a707d1c5167f034784e6cff8d87a9b46&36&116&869&1&0&2056&0
-    pass
+    keys = [
+        "69a9316f8accc7ac266fb09330eb69f8&36&116&869&1&0&12&0",
+        "9fc173c303c11a9c92ac919bf3218b97&36&116&869&1&0&40&0",
+        "255cd8fdf75360a7137050555926ef8f&36&116&869&1&0&44&0",
+        "72cce57fb2a55441fe7b80d6402ddf95&36&116&869&1&0&264&0",
+        "abb2cbc1793aa38b416ad8f76cede328&36&116&869&1&0&268&0",
+        "68c7047c520511bb08b1bbf3acc55434&36&116&869&1&0&296&0",
+        "805115c6340ace0687b16b164d883ad8&36&116&869&1&0&300&0",
+        "a707d1c5167f034784e6cff8d87a9b46&36&116&869&1&0&2056&0",
+    ]
+
+    s3resource = session.resource("s3")
+    s3Bucket = "cuboids.production.neurodata"
+    dtype = "uint16"
+    cube_size = 512, 512, 16
+
+    for s3Key in keys:
+        keyparts = bosslib.parts_from_bosskey(s3Key)
+        try:
+            data = bosslib.get_boss_data(s3resource, s3Bucket, s3Key, dtype, cube_size)
+            print("got one")
+        except Exception as e:
+            print(e)
+
