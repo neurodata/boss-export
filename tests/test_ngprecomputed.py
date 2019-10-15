@@ -1,4 +1,7 @@
+import gzip
+
 import boto3
+import brotli
 import numpy as np
 import pytest
 from pytest import raises
@@ -125,6 +128,27 @@ def test_limit_to_extent():
     limited_shape = tuple(e - i for e, i in zip(extent, xyz))
 
     assert data_limit.shape == limited_shape[::-1]
+
+
+def test_numpy_chunk():
+    data_array = np.random.randint(0, 2500, (16, 512, 512), "uint16")
+
+    # test no compression
+    bstring = ngprecomputed.numpy_chunk(data_array, compression="")
+    assert bstring == np.transpose(data_array, (2, 1, 0)).tobytes("F")
+
+    with raises(NotImplementedError):
+        ngprecomputed.numpy_chunk(data_array, compression="lz4")
+
+    bstring_gzip = ngprecomputed.numpy_chunk(data_array, compression="gzip")
+    bstring_gzip_test = gzip.compress(np.transpose(data_array, (2, 1, 0)).tobytes("F"))
+    assert gzip.decompress(bstring_gzip) == gzip.decompress(bstring_gzip_test)
+
+    bstring_br = ngprecomputed.numpy_chunk(data_array, compression="br")
+    bstring_br_test = brotli.compress(
+        np.transpose(data_array, (2, 1, 0)).tobytes("F"), quality=6
+    )
+    assert brotli.decompress(bstring_br) == brotli.decompress(bstring_br_test)
 
 
 #! failing because offset not aligned with the cube size

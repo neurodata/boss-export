@@ -80,13 +80,15 @@ def get_scale(base_scale, res, iso=False):
 
 
 def numpy_chunk(data_array, compression="gzip"):
-    data_xyz = np.transpose(data_array, (2, 1, 0))
+    data_xyz = data_array.T
     if compression == "gzip":  # gzip
         comp_array = gzip.compress(chunks.encode_raw(data_xyz))
     elif compression == "br":  # brotli
         comp_array = brotli.compress(chunks.encode_raw(data_xyz), quality=6)
-    else:  # raw
+    elif compression == "":  # raw
         comp_array = chunks.encode_raw(data_xyz)
+    else:
+        raise NotImplementedError("Unsupported compression format")
 
     return comp_array
 
