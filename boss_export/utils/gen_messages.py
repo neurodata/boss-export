@@ -6,6 +6,8 @@ import itertools
 import json
 import math
 import os
+from functools import partial
+from multiprocessing import Pool
 
 import boto3
 import click
@@ -16,6 +18,8 @@ from boss_export.libs import bosslib, mortonxyz
 from cloudvolume import CloudVolume
 
 SESSION = boto3.Session(profile_name="icc")
+
+S3_RESOURCE = SESSION.resource("s3")
 
 # if we set env. variables,
 # and it doesn't find the secret in ~/.cloudvolume
@@ -34,8 +38,11 @@ DEST_BUCKET = "open-neurodata-test"  # testing location
 
 PUBLIC_METADATA = "scripts/public_datasets_downsample.csv"
 
+BOSS_BUCKET = "cuboids.production.neurodata"
 T = 0  # this is always 0
 CUBE_SIZE = 512, 512, 16  # constant for BOSS
+
+COMPRESSION = "br"
 
 
 def create_or_get_queue():
@@ -69,6 +76,10 @@ def create_cube_metadata(metadata, xx, yy, zz, res, scale_at_res, extent_at_res)
     }
 
     cube_metadata.update(cube_info)
+
+    cube_metadata["input_cube_size"] = CUBE_SIZE
+    cube_metadata["compression"] = COMPRESSION
+    cube_metadata["boss_bucket"] = BOSS_BUCKET
 
     return cube_metadata
 
@@ -127,17 +138,22 @@ def chunks(iterable, size=10):
         yield itertools.chain([first], itertools.islice(iterator, size - 1))
 
 
+def send_msgs_batch(msg_batch, queue):
+    entries = []
+    for msg in msg_batch:
+        Id = msg["s3key"].split("&")[0]
+        entry = {"Id": Id, "MessageBody": json.dumps(msg)}
+        entries.append(entry)
+    queue.send_messages(Entries=entries)
+
+
 def send_messages(msgs):
-    queue = create_or_get_queue()
     maxBatchSize = 10  # current maximum allowed
 
-    for chunk in chunks(msgs, maxBatchSize):
-        entries = []
-        for x in chunk:
-            Id = x["s3key"].split("&")[0]
-            entry = {"Id": Id, "MessageBody": json.dumps(x)}
-            entries.append(entry)
-        queue.send_messages(Entries=entries)
+    send_msgs_batch_partial = partial(send_msgs_batch, queue=create_or_get_queue())
+
+    for batch in chunks(msgs, maxBatchSize):
+        send_msgs_batch_partial(batch)
 
 
 def get_ch_metadata(coll, exp, ch):
@@ -178,7 +194,7 @@ def get_ch_metadata(coll, exp, ch):
     metadata["extent"] = metadata["x_stop"], metadata["y_stop"], metadata["z_stop"]
     metadata["offset"] = metadata["x_start"], metadata["y_start"], metadata["z_start"]
 
-    # volume size is the actual volume that data exists in (like the size of a numpy array)
+    # volume size is the actual volume that data existBOSS_BUCKETBOSS_BUCKETBOSS_BUCKETBOSS_BUCKETBOSS_BUCKETBOSS_BUCKETBOSS_BUCKETBOSS_BUCKETBOSS_BUCKETs in (like the size of a numpy array)
     metadata["volume_size"] = tuple(
         e - o for e, o in zip(metadata["extent"], metadata["offset"])
     )
@@ -215,7 +231,17 @@ def create_precomputed_volume(metadata):
     for res in range(1, res_levels):
         vol.add_scale((2 ** res, 2 ** res, 1), chunk_size=(512, 512, 16))
 
-    vol.commit_info()
+    # TODO: Don't use cloudvolume to submit the JSON, just use boto3 directly
+    layer_path = metadata["layer_path"]
+    infokey = f"{layer_path}/info"
+    obj = S3_RESOURCE.Object(metadata["dest_bucket"], infokey)
+    resp = obj.put(
+        Body=json.dumps(info),
+        CacheControl="no-cache",
+        ContentType="application/json",
+        ACL="public-read",
+    )
+    assert resp["ResponseMetadata"]["HTTPStatusCode"] == 200
 
 
 @click.command()

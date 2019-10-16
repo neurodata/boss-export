@@ -1,7 +1,6 @@
 import gzip
 
 import brotli
-import numpy as np
 import requests
 
 from boss_export.libs import chunks, mortonxyz
