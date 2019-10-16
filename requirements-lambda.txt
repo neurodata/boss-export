@@ -1,0 +1,7 @@
+blosc==1.5.1 # for lambda compatibility?
+boto3
+morton-py
+numpy
+requests
+brotli
+pillow
