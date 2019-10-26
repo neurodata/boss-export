@@ -112,7 +112,7 @@ def get_scale(x_voxel_size, y_voxel_size, z_voxel_size, voxel_unit):
         multiplier = 1e7
 
     scale = tuple(
-        int(v * multiplier) for v in (x_voxel_size, y_voxel_size, z_voxel_size)
+        round(v * multiplier, 2) for v in (x_voxel_size, y_voxel_size, z_voxel_size)
     )
 
     return scale

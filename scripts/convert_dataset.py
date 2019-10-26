@@ -3,17 +3,24 @@ from multiprocessing import Pool
 
 import click
 
-# import boto3
-# from botocore.errorfactory import ClientError
-
 from boss_export.lambda_function import s3_batch_boss_export_neuroglancer
+from boss_export.libs import ngprecomputed
 
 # from boss_export.libs import bosslib, mortonxyz, ngprecomputed
+
 from boss_export.utils import gen_messages
+
+import boto3
+
+# from botocore.errorfactory import ClientError
+
 
 # SESSION = boto3.Session(profile_name="boss-s3")
 # S3_CLIENT = SESSION.client("s3")
 # BOSS_BUCKET = "cuboids.production.neurodata"
+
+SESSION = boto3.Session(profile_name="icc")
+S3_RESOURCE = SESSION.resource("s3")
 
 
 @click.command()
@@ -23,7 +30,7 @@ from boss_export.utils import gen_messages
 # "ZBrain", "ZBrain", "ZBB_y385-Cre"
 def convert_dataset(coll, exp, ch):
     ch_metadata = gen_messages.get_ch_metadata(coll, exp, ch)
-    gen_messages.create_precomputed_volume(ch_metadata)
+    ngprecomputed.create_precomputed_volume(S3_RESOURCE, **ch_metadata)
     msgs = gen_messages.return_messages(ch_metadata)
 
     # process the messages in parallel

@@ -14,8 +14,7 @@ import click
 import pandas as pd
 from botocore.exceptions import ParamValidationError
 
-from boss_export.libs import bosslib, mortonxyz
-from cloudvolume import CloudVolume
+from boss_export.libs import bosslib, mortonxyz, ngprecomputed
 
 SESSION = boto3.Session(profile_name="icc")
 
@@ -162,7 +161,7 @@ def get_ch_metadata(coll, exp, ch):
     """
 
     # read and parse the CSV file that contains all the public datasets
-    df = pd.read_csv(PUBLIC_METADATA)
+    df = pd.read_csv(PUBLIC_METADATA, na_filter=False)
     df = df[(df["coll"] == coll) & (df["exp"] == exp) & (df["ch"] == ch)]
     metadata = df.to_dict(orient="records")[0]
 
@@ -199,49 +198,9 @@ def get_ch_metadata(coll, exp, ch):
         e - o for e, o in zip(metadata["extent"], metadata["offset"])
     )
 
+    metadata["chunk_size"] = CUBE_SIZE
+
     return metadata
-
-
-def create_precomputed_volume(metadata):
-    """Use CloudVolume to create the precomputed info file"""
-
-    info = CloudVolume.create_new_info(
-        num_channels=1,
-        layer_type=metadata["layer_type"],
-        data_type=metadata["dtype"],  # Channel images might be 'uint8'
-        encoding=metadata[
-            "encoding"
-        ],  # raw, jpeg, compressed_segmentation, fpzip, kempressed
-        resolution=metadata["scale"],  # Voxel scaling, units are in nanometers
-        voxel_offset=metadata["offset"],  # x,y,z offset in voxels from the origin
-        # Pick a convenient size for your underlying chunk representation
-        # Powers of two are recommended, doesn't need to cover image exactly
-        chunk_size=CUBE_SIZE,  # units are voxels
-        volume_size=metadata["extent"],  # units are voxels
-    )
-
-    # this requires write access to the bucket
-    vol = CloudVolume(metadata["path"], info=info)
-
-    if metadata["downsample_status"] == "DOWNSAMPLED":
-        res_levels = metadata["num_hierarchy_levels"]
-    else:
-        res_levels = 1  # only one level (res 0)
-
-    for res in range(1, res_levels):
-        vol.add_scale((2 ** res, 2 ** res, 1), chunk_size=(512, 512, 16))
-
-    # TODO: Don't use cloudvolume to submit the JSON, just use boto3 directly
-    layer_path = metadata["layer_path"]
-    infokey = f"{layer_path}/info"
-    obj = S3_RESOURCE.Object(metadata["dest_bucket"], infokey)
-    resp = obj.put(
-        Body=json.dumps(info),
-        CacheControl="no-cache",
-        ContentType="application/json",
-        ACL="public-read",
-    )
-    assert resp["ResponseMetadata"]["HTTPStatusCode"] == 200
 
 
 @click.command()
@@ -255,7 +214,7 @@ def gen_messages(coll, exp, ch):
     ch_metadata = get_ch_metadata(coll, exp, ch)
 
     # create the precomputed volume
-    create_precomputed_volume(ch_metadata)
+    ngprecomputed.create_precomputed_volume(S3_RESOURCE, ch_metadata)
 
     msgs = return_messages(ch_metadata)
 

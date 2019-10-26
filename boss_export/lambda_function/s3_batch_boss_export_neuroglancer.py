@@ -10,6 +10,8 @@ import boto3
 from boss_export.libs import bosslib, mortonxyz, ngprecomputed
 
 # should get credentials from role it's running under
+# SESSION = boto3.Session(profile_name="boss-s3")
+# S3_RESOURCE = SESSION.resource("s3")
 S3_RESOURCE = boto3.resource("s3")
 
 
