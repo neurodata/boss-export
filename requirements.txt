@@ -5,5 +5,5 @@ numpy
 requests
 pandas
 click
--e git+git://github.com/neurodata/cloud-volume@set-acl-s3#egg=cloud-volume
+cloud-volume>=0.65.0
 brotli
