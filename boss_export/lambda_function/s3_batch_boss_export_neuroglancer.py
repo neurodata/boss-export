@@ -3,8 +3,6 @@ Consumes messages from an sqs queue
 Output is a neuroglancer gzip compressed object at the correct path and bucket
 """
 
-import json
-
 import boto3
 
 from boss_export.libs import bosslib, mortonxyz, ngprecomputed
@@ -16,6 +14,8 @@ S3_RESOURCE = boto3.resource("s3")
 
 
 def convert_cuboid(msg):
+    print("msg", msg)
+
     s3Key = msg["s3key"]
     dtype = msg["dtype"]
     # extent = msg["extent"]
@@ -29,8 +29,6 @@ def convert_cuboid(msg):
     chunk_size = msg["chunk_size"]
     compression = msg["compression"]
     boss_bucket = msg["boss_bucket"]
-
-    print("Starting", s3Key)
 
     # object naming
     # - decode the object name into its parts: morton ID, res, table keys
@@ -79,5 +77,5 @@ def convert_cuboid(msg):
 
 def lambda_handler(event, context):
     for record in event["Records"]:
-        msg = json.loads(record["messageAttributes"])
+        msg = record["body"]
         convert_cuboid(msg)

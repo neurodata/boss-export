@@ -1,7 +1,9 @@
 #! /bin/bash
 
-rm _build/boss-export.zip
-zip -r _build/boss-export.zip boss_export
+/bin/rm _build/boss-export.zip
 mkdir _build
+zip -r _build/boss-export.zip boss_export
 cd venv-lambda/lib/python3.7/site-packages/
 zip -gr ../../../../_build/boss-export.zip .
+cd ../../../../
+aws s3 cp _build/boss-export.zip s3://boss-export-lambda/ --profile=icc

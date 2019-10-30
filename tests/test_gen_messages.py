@@ -1,7 +1,9 @@
+import math
+
 from boss_export.utils import gen_messages
 
 
-def test_msg_creation():
+def test_create_cube_metadata():
     # {
     #     "coll": "ZBrain",
     #     "exp": "ZBrain",
@@ -74,20 +76,27 @@ def test_msg_creation():
         "res",
         "scale_at_res",
         "extent_at_res",
+        "input_cube_size",
+        "compression",
+        "boss_bucket",
+        "chunk_size",
+        "dest_bucket",
+        "layer_path",
     ]
 
     ch_metadata = gen_messages.get_ch_metadata("ZBrain", "ZBrain", "ZBB_y385-Cre")
 
-    xx, yy, zz, res, scale_at_res, extent_at_res = (
-        0,
+    extent = ch_metadata["x_stop"], ch_metadata["y_stop"], ch_metadata["z_stop"]
+    res = 0
+    xx, yy, zz, scale_at_res, extent_at_res = (
         0,
         0,
         0,
         [798.0, 798.0, 2000.0],
-        ch_metadata["extent_at_res"],
+        [math.ceil(e / 2 ** res) for e in extent[0:2]] + [extent[2]],
     )
     msg = gen_messages.create_cube_metadata(
         ch_metadata, xx, yy, zz, res, scale_at_res, extent_at_res
     )
 
-    assert list(msg.keys()) == expected_keys
+    assert sorted(list(msg.keys())) == sorted(expected_keys)

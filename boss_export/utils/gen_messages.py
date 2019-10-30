@@ -7,14 +7,17 @@ import json
 import math
 import os
 from functools import partial
-from multiprocessing import Pool
 
 import boto3
 import click
 import pandas as pd
 from botocore.exceptions import ParamValidationError
+from cloudvolume import CloudVolume
 
 from boss_export.libs import bosslib, mortonxyz, ngprecomputed
+
+# from multiprocessing import Pool
+
 
 SESSION = boto3.Session(profile_name="icc")
 
@@ -42,6 +45,50 @@ T = 0  # this is always 0
 CUBE_SIZE = 512, 512, 16  # constant for BOSS
 
 COMPRESSION = "br"
+
+
+def create_precomputed_volume(s3_resource, **kwargs):
+    """Use CloudVolume to create the precomputed info file"""
+
+    info = CloudVolume.create_new_info(
+        num_channels=1,
+        layer_type=kwargs["layer_type"],
+        data_type=kwargs["dtype"],  # Channel images might be 'uint8'
+        encoding=kwargs[
+            "encoding"
+        ],  # raw, jpeg, compressed_segmentation, fpzip, kempressed
+        resolution=kwargs["scale"],  # Voxel scaling, units are in nanometers
+        voxel_offset=kwargs["offset"],  # x,y,z offset in voxels from the origin
+        # Pick a convenient size for your underlying chunk representation
+        # Powers of two are recommended, doesn't need to cover image exactly
+        chunk_size=kwargs["chunk_size"],  # units are voxels
+        volume_size=kwargs["extent"],  # units are voxels
+    )
+
+    # this requires write access to the bucket
+    vol = CloudVolume(kwargs["path"], info=info)
+
+    if kwargs["downsample_status"] == "DOWNSAMPLED":
+        res_levels = kwargs["num_hierarchy_levels"]
+    else:
+        res_levels = 1  # only one level (res 0)
+
+    for res in range(1, res_levels):
+        vol.add_scale((2 ** res, 2 ** res, 1), chunk_size=(512, 512, 16))
+
+    # TODO: Don't use cloudvolume to submit the JSON, just use boto3 directly
+    layer_path = kwargs["layer_path"]
+    infokey = f"{layer_path}/info"
+    resp = ngprecomputed.save_obj(
+        s3_resource,
+        kwargs["dest_bucket"],
+        infokey,
+        json.dumps(info),
+        content_encoding="",
+        cache_control="no-cache",
+        content_type="application/json",
+    )
+    assert resp["ResponseMetadata"]["HTTPStatusCode"] == 200
 
 
 def create_or_get_queue():
@@ -193,7 +240,7 @@ def get_ch_metadata(coll, exp, ch):
     metadata["extent"] = metadata["x_stop"], metadata["y_stop"], metadata["z_stop"]
     metadata["offset"] = metadata["x_start"], metadata["y_start"], metadata["z_start"]
 
-    # volume size is the actual volume that data existBOSS_BUCKETBOSS_BUCKETBOSS_BUCKETBOSS_BUCKETBOSS_BUCKETBOSS_BUCKETBOSS_BUCKETBOSS_BUCKETBOSS_BUCKETs in (like the size of a numpy array)
+    # volume size is the actual volume that data exists in (like the size of a numpy array)
     metadata["volume_size"] = tuple(
         e - o for e, o in zip(metadata["extent"], metadata["offset"])
     )
@@ -214,7 +261,7 @@ def gen_messages(coll, exp, ch):
     ch_metadata = get_ch_metadata(coll, exp, ch)
 
     # create the precomputed volume
-    ngprecomputed.create_precomputed_volume(S3_RESOURCE, ch_metadata)
+    create_precomputed_volume(S3_RESOURCE, **ch_metadata)
 
     msgs = return_messages(ch_metadata)
 
