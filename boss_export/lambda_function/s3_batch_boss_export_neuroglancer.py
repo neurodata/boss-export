@@ -6,6 +6,7 @@ Output is a neuroglancer gzip compressed object at the correct path and bucket
 import json
 
 import boto3
+from botocore.exceptions import ClientError
 
 from boss_export.libs import bosslib, mortonxyz, ngprecomputed
 
@@ -38,9 +39,13 @@ def convert_cuboid(msg):
 
     # get obj
     # decompress the object from boss format to numpy
-    data_array = bosslib.get_boss_data(
-        S3_RESOURCE, boss_bucket, s3Key, dtype, input_cube_size
-    )
+    try:
+        data_array = bosslib.get_boss_data(
+            S3_RESOURCE, boss_bucket, s3Key, dtype, input_cube_size
+        )
+    except ClientError as e:
+        print(s3Key, str(e))
+        return
 
     # get the coordinates of the cube
     xyz_coords = mortonxyz.get_coords(bosskey.mortonid, input_cube_size)

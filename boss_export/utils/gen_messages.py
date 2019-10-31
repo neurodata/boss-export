@@ -70,6 +70,7 @@ def create_precomputed_volume(s3_resource, **kwargs):
         res_levels = 1  # only one level (res 0)
 
     for res in range(1, res_levels):
+        # TODO: fix this to be equal to how we generate the keys
         vol.add_scale((2 ** res, 2 ** res, 1), chunk_size=(512, 512, 16))
 
     # TODO: Don't use cloudvolume to submit the JSON, just use boto3 directly

@@ -12,6 +12,7 @@ with open("public_datasets.csv", "w") as f:
 
 colls = rmt.list_collections()
 colls.remove("ben_dev")
+colls.remove("ZBrain")
 
 for coll in colls:
     exps = rmt.list_experiments(coll)
