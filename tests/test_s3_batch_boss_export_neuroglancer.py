@@ -5,7 +5,9 @@ from boss_export.utils import gen_messages
 
 
 def test_convert_cuboid():
-    ch_metadata = gen_messages.get_ch_metadata("ZBrain", "ZBrain", "ZBB_y385-Cre")
+    ch_metadata = gen_messages.get_ch_metadata(
+        "ZBrain", "ZBrain", "ZBB_y385-Cre", "open-neurodata-test"
+    )
 
     xx, yy, zz, res, scale_at_res, extent_at_res = (
         2,

@@ -3,6 +3,8 @@ Consumes messages from an sqs queue
 Output is a neuroglancer gzip compressed object at the correct path and bucket
 """
 
+import json
+
 import boto3
 
 from boss_export.libs import bosslib, mortonxyz, ngprecomputed
@@ -78,4 +80,7 @@ def convert_cuboid(msg):
 def lambda_handler(event, context):
     for record in event["Records"]:
         msg = record["body"]
+        # coming from SQS, the body is a string
+        if type(msg) == str:
+            msg = json.loads(msg)
         convert_cuboid(msg)

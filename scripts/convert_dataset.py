@@ -15,7 +15,7 @@ from boss_export.utils import gen_messages
 # S3_CLIENT = SESSION.client("s3")
 # BOSS_BUCKET = "cuboids.production.neurodata"
 
-SESSION = boto3.Session(profile_name="icc")
+SESSION = boto3.Session(profile_name="ben-boss-dev")
 S3_RESOURCE = SESSION.resource("s3")
 
 
@@ -23,9 +23,10 @@ S3_RESOURCE = SESSION.resource("s3")
 @click.argument("coll")
 @click.argument("exp")
 @click.argument("ch")
+@click.argument("dest_bucket")
 # "ZBrain", "ZBrain", "ZBB_y385-Cre"
-def convert_dataset(coll, exp, ch):
-    ch_metadata = gen_messages.get_ch_metadata(coll, exp, ch)
+def convert_dataset(coll, exp, ch, dest_bucket):
+    ch_metadata = gen_messages.get_ch_metadata(coll, exp, ch, dest_bucket)
     gen_messages.create_precomputed_volume(S3_RESOURCE, **ch_metadata)
     msgs = gen_messages.return_messages(ch_metadata)
 

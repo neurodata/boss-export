@@ -11,7 +11,7 @@ from functools import partial
 import boto3
 import click
 import pandas as pd
-from botocore.exceptions import ParamValidationError
+from botocore.exceptions import ClientError
 from cloudvolume import CloudVolume
 
 from boss_export.libs import bosslib, mortonxyz, ngprecomputed
@@ -19,8 +19,7 @@ from boss_export.libs import bosslib, mortonxyz, ngprecomputed
 # from multiprocessing import Pool
 
 
-SESSION = boto3.Session(profile_name="icc")
-
+SESSION = boto3.Session(profile_name="ben-boss-dev")
 S3_RESOURCE = SESSION.resource("s3")
 
 # if we set env. variables,
@@ -35,9 +34,6 @@ SQS = SESSION.resource("sqs", region_name="us-east-1")
 SQS_NAME = "copy-boss-cuboids"
 
 # globals
-DEST_BUCKET = "open-neurodata-test"  # testing location
-# DEST_BUCKET = "open-neurodata"  # actual location
-
 PUBLIC_METADATA = "scripts/public_datasets_downsample.csv"
 
 BOSS_BUCKET = "cuboids.production.neurodata"
@@ -93,12 +89,24 @@ def create_precomputed_volume(s3_resource, **kwargs):
 
 def create_or_get_queue():
     try:
+        queue = SQS.get_queue_by_name(QueueName=SQS_NAME)
+    except ClientError as e:
+        print(str(e))
+        # create the queue
         queue = SQS.create_queue(
             QueueName=SQS_NAME,
-            # Attributes={"DelaySeconds": 5, "ReceiveMessageWaitTimeSeconds": 5},
+            Attributes={
+                "DelaySeconds": "5",
+                "ReceiveMessageWaitTimeSeconds": "5",
+                "VisibilityTimeout": "600",  # lamda timeout is 1.5 minutes
+                "RedrivePolicy": json.dumps(
+                    {
+                        "deadLetterTargetArn": "arn:aws:sqs:us-east-1:950331671021:copy-boss-cuboids-deadletter",
+                        "maxReceiveCount": "5",
+                    }
+                ),
+            },
         )
-    except ParamValidationError:
-        queue = SQS.get_queue_by_name(QueueName=SQS_NAME)
     return queue
 
 
@@ -202,7 +210,7 @@ def send_messages(msgs):
         send_msgs_batch_partial(batch)
 
 
-def get_ch_metadata(coll, exp, ch):
+def get_ch_metadata(coll, exp, ch, dest_bucket):
     """given a coll, exp, ch strings
     returns as a dict the row from the csv file with metadata about this channel
     """
@@ -216,8 +224,8 @@ def get_ch_metadata(coll, exp, ch):
     layer_path = "/".join((metadata["coll"], metadata["exp"], metadata["ch"]))
 
     metadata["layer_path"] = layer_path
-    metadata["dest_bucket"] = DEST_BUCKET
-    metadata["path"] = f"s3://{DEST_BUCKET}/{layer_path}/"
+    metadata["dest_bucket"] = dest_bucket
+    metadata["path"] = f"s3://{dest_bucket}/{layer_path}/"
 
     # set some metadata about the channel
     if metadata["dtype"] in ["uint8", "uint16"]:
@@ -254,11 +262,12 @@ def get_ch_metadata(coll, exp, ch):
 @click.argument("coll")
 @click.argument("exp")
 @click.argument("ch")
+@click.argument("dest_bucket")
 # "ZBrain", "ZBrain", "ZBB_y385-Cre"
-def gen_messages(coll, exp, ch):
+def gen_messages(coll, exp, ch, dest_bucket):
 
     # get the metadata for this channel
-    ch_metadata = get_ch_metadata(coll, exp, ch)
+    ch_metadata = get_ch_metadata(coll, exp, ch, dest_bucket)
 
     # create the precomputed volume
     create_precomputed_volume(S3_RESOURCE, **ch_metadata)

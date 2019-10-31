@@ -84,7 +84,9 @@ def test_create_cube_metadata():
         "layer_path",
     ]
 
-    ch_metadata = gen_messages.get_ch_metadata("ZBrain", "ZBrain", "ZBB_y385-Cre")
+    ch_metadata = gen_messages.get_ch_metadata(
+        "ZBrain", "ZBrain", "ZBB_y385-Cre", "open-neurodata-test"
+    )
 
     extent = ch_metadata["x_stop"], ch_metadata["y_stop"], ch_metadata["z_stop"]
     res = 0
