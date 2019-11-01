@@ -60,7 +60,7 @@ def create_precomputed_volume(s3_resource, **kwargs):
         chunk_size=kwargs["chunk_size"],  # units are voxels
         volume_size=kwargs["extent"],  # units are voxels
         # undocumented param that creates the info w/ that many scales
-        max_mip=kwargs["num_hierarchy_levels"]
+        max_mip=kwargs["num_hierarchy_levels"] - 1
         if kwargs["downsample_status"] == "DOWNSAMPLED"
         else 1,
     )
