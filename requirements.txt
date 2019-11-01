@@ -5,5 +5,5 @@ numpy
 requests
 pandas
 click
-cloud-volume>=0.65.0
+-e git+git://github.com/neurodata/cloud-volume@voxel-res-non-int#egg=cloud-volume
 brotli

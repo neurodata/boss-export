@@ -115,4 +115,8 @@ def get_scale(x_voxel_size, y_voxel_size, z_voxel_size, voxel_unit):
         round(v * multiplier, 2) for v in (x_voxel_size, y_voxel_size, z_voxel_size)
     )
 
+    # data comes from pandas DF where all values start as floats
+    # convert to int all that you can
+    scale = [int(s) if s == int(s) else s for s in scale]
+
     return scale

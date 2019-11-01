@@ -59,21 +59,13 @@ def create_precomputed_volume(s3_resource, **kwargs):
         # Powers of two are recommended, doesn't need to cover image exactly
         chunk_size=kwargs["chunk_size"],  # units are voxels
         volume_size=kwargs["extent"],  # units are voxels
+        # undocumented param that creates the info w/ that many scales
+        max_mip=kwargs["num_hierarchy_levels"]
+        if kwargs["downsample_status"] == "DOWNSAMPLED"
+        else 1,
     )
 
-    # this requires write access to the bucket
-    vol = CloudVolume(kwargs["path"], info=info)
-
-    if kwargs["downsample_status"] == "DOWNSAMPLED":
-        res_levels = kwargs["num_hierarchy_levels"]
-    else:
-        res_levels = 1  # only one level (res 0)
-
-    for res in range(1, res_levels):
-        # TODO: fix this to be equal to how we generate the keys
-        vol.add_scale((2 ** res, 2 ** res, 1), chunk_size=(512, 512, 16))
-
-    # TODO: Don't use cloudvolume to submit the JSON, just use boto3 directly
+    # Don't use cloudvolume to submit the JSON, just use boto3 directly
     layer_path = kwargs["layer_path"]
     infokey = f"{layer_path}/info"
     resp = ngprecomputed.save_obj(
@@ -163,9 +155,7 @@ def return_messages(metadata):
         res_levels = 1  # only one level (res 0)
 
     for res in range(res_levels):  # w/ 4 levels, you have 0,1,2,3
-        scale_at_res = [s * 2 ** res for s in metadata["scale"][0:2]] + [
-            metadata["scale"][2]
-        ]
+        scale_at_res = ngprecomputed.get_scale_at_res(metadata["scale"], res)
         extent_at_res = [math.ceil(e / 2 ** res) for e in extent[0:2]] + [extent[2]]
 
         for xx, yy, zz in return_xyz_keys(offset, extent_at_res, CUBE_SIZE):

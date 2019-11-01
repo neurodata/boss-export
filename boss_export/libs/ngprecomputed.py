@@ -174,3 +174,16 @@ def save_obj(
 
     return resp
 
+
+def get_scale_at_res(base_scale, res):
+    """Returns voxel resolution at a given resolution of precomptued volume (anisotropic)
+    res=0 is base resolution
+
+    Raises: ValueError if any element in base_scale < 1
+    """
+    try:
+        assert all([s >= 1 for s in base_scale])
+    except AssertionError:
+        raise ValueError("voxel resolution is < 1")
+
+    return [s * 2 ** res for s in base_scale[0:2]] + [base_scale[2]]

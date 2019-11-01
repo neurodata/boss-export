@@ -76,3 +76,15 @@ def test_get_boss_downsampled_data():
     data = bosslib.get_boss_data(s3resource, s3Bucket, s3Key, dtype, cube_size)
     assert data.shape == cube_size[::-1]
     assert data.dtype == dtype
+
+
+def test_get_boss_scale():
+
+    scale = bosslib.get_scale(2.0, 3.5, 50, "nanometers")
+    assert [str(s) for s in scale] == ["2", "3.5", "50"]
+
+    scale = bosslib.get_scale(0.585, 0.585, 5, "micrometers")
+    assert [str(s) for s in scale] == ["585", "585", "5000"]
+
+    scale = bosslib.get_scale(2.152, 3.5, 50.0001, "nanometers")
+    assert [str(s) for s in scale] == ["2.15", "3.5", "50"]
