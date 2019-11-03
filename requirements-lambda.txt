@@ -4,4 +4,3 @@ morton-py
 numpy
 requests
 brotli
-pillow

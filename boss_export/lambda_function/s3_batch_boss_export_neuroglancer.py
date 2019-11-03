@@ -1,6 +1,6 @@
 """Lambda to export data from BOSS
-Consumes messages from an sqs queue
-Output is a neuroglancer gzip compressed object at the correct path and bucket
+Consumes messages from an SQS queue
+Output is a neuroglancer compressed object at the correct path and bucket
 """
 
 import json
@@ -57,9 +57,6 @@ def convert_cuboid(msg):
 
     # boss mortonid has offset embedded in it
     ngmorton = ngprecomputed.ngmorton(bosskey.mortonid, input_cube_size, offset)
-
-    # TODO: handle scale here for res > 0
-    # TODO: deal with morton offsets (boss has it, ngprecomputed does not)
 
     # get the shape of the object
     shape = data_array_crop.shape

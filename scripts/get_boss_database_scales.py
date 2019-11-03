@@ -29,7 +29,7 @@ for index, row in df.iterrows():
     exp_id = row["exp_ids"]
 
     mycursor.execute(
-        f"select experiment.name,coordinate_frame.name,x_voxel_size,y_voxel_size,z_voxel_size,voxel_unit  from coordinate_frame inner join experiment on coordinate_frame.id = experiment.coord_frame_id where experiment.id = {exp_id}"
+        f"select experiment.name,coordinate_frame.name,x_voxel_size,y_voxel_size,z_voxel_size,voxel_unit from coordinate_frame inner join experiment on coordinate_frame.id = experiment.coord_frame_id where experiment.id = {exp_id}"
     )
 
     result = mycursor.fetchall()[0]
@@ -46,6 +46,5 @@ df["x_voxel_size"] = x_voxel_sizes
 df["y_voxel_size"] = y_voxel_sizes
 df["z_voxel_size"] = z_voxel_sizes
 df["voxel_unit"] = voxel_units
-
 
 df.to_csv("scripts/public_datasets_scales.csv", index=False)
