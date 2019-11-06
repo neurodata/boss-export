@@ -1,40 +1,41 @@
-import io
+# import io
 
 import numpy as np
-from PIL import Image
+
+# from PIL import Image
 
 
-def encode_jpeg(arr):
-    assert arr.dtype == np.uint8
+# def encode_jpeg(arr):
+#     assert arr.dtype == np.uint8
 
-    # simulate multi-channel array for single channel arrays
-    while arr.ndim < 4:
-        arr = arr[..., np.newaxis]  # add channels to end of x,y,z
+#     # simulate multi-channel array for single channel arrays
+#     while arr.ndim < 4:
+#         arr = arr[..., np.newaxis]  # add channels to end of x,y,z
 
-    reshaped = arr.T
-    reshaped = np.moveaxis(reshaped, 0, -1)
-    reshaped = reshaped.reshape(
-        reshaped.shape[0], reshaped.shape[1] * reshaped.shape[2], reshaped.shape[3]
-    )
-    if reshaped.shape[2] == 1:
-        img = Image.fromarray(reshaped[:, :, 0], mode="L")
-    elif reshaped.shape[2] == 3:
-        img = Image.fromarray(reshaped, mode="RGB")
-    else:
-        raise ValueError(
-            "Number of image channels should be 1 or 3. Got: {}".format(arr.shape[3])
-        )
+#     reshaped = arr.T
+#     reshaped = np.moveaxis(reshaped, 0, -1)
+#     reshaped = reshaped.reshape(
+#         reshaped.shape[0], reshaped.shape[1] * reshaped.shape[2], reshaped.shape[3]
+#     )
+#     if reshaped.shape[2] == 1:
+#         img = Image.fromarray(reshaped[:, :, 0], mode="L")
+#     elif reshaped.shape[2] == 3:
+#         img = Image.fromarray(reshaped, mode="RGB")
+#     else:
+#         raise ValueError(
+#             "Number of image channels should be 1 or 3. Got: {}".format(arr.shape[3])
+#         )
 
-    f = io.BytesIO()
-    img.save(f, "JPEG")
-    return f.getvalue()
+#     f = io.BytesIO()
+#     img.save(f, "JPEG")
+#     return f.getvalue()
 
 
-def decode_jpeg(bytestring, shape, dtype):
-    img = Image.open(io.BytesIO(bytestring))
-    data = np.array(img.getdata(), dtype=dtype)
+# def decode_jpeg(bytestring, shape, dtype):
+#     img = Image.open(io.BytesIO(bytestring))
+#     data = np.array(img.getdata(), dtype=dtype)
 
-    return data.reshape(shape, order="F")
+#     return data.reshape(shape, order="F")
 
 
 def encode_raw(subvol):

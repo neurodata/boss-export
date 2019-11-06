@@ -33,6 +33,11 @@ def convert_cuboid(msg):
     compression = msg["compression"]
     boss_bucket = msg["boss_bucket"]
 
+    if msg["hierarchy_method"] == "isotropic":
+        iso = True
+    else:
+        iso = False
+
     # object naming
     # - decode the object name into its parts: morton ID, res, table keys
     bosskey = bosslib.parts_from_bosskey(s3Key)
@@ -63,7 +68,7 @@ def convert_cuboid(msg):
 
     # compute neuroglancer key (w/ offset in name)
     chunk_name = ngprecomputed.get_chunk_name(
-        ngmorton, scale, bosskey.res, chunk_size, shape, offset
+        ngmorton, scale, bosskey.res, chunk_size, shape, offset, iso=iso
     )
     ngkey = ngprecomputed.get_ng_key(dest_dataset, None, chunk_name)
 

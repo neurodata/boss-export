@@ -4,7 +4,6 @@ outputs messages in SQS for every cuboid in BOSS
 
 import itertools
 import json
-import math
 import os
 from functools import partial
 
@@ -12,9 +11,9 @@ import boto3
 import click
 import pandas as pd
 from botocore.exceptions import ClientError
-from cloudvolume import CloudVolume
 
 from boss_export.libs import bosslib, mortonxyz, ngprecomputed
+from cloudvolume import CloudVolume
 
 # from multiprocessing import Pool
 
