@@ -207,10 +207,10 @@ def test_save_obj():
 
 
 def test_get_scale_at_res():
-    def test_res_scale(res_scales):
+    def test_res_scale(res_scales, iso=False):
         base_scale = res_scales[0][1]
         for res, scale in res_scales:
-            scale_at_res = ngprecomputed.get_scale_at_res(base_scale, res)
+            scale_at_res = ngprecomputed.get_scale_at_res(base_scale, res, iso)
             assert scale_at_res == scale
 
     res_scales = [(0, [2, 2, 50]), (1, [4, 4, 50])]
@@ -227,3 +227,6 @@ def test_get_scale_at_res():
 
     with raises(ValueError, match="voxel resolution is < 1"):
         ngprecomputed.get_scale_at_res([1, 0.5, 50], 1)
+
+    res_scales = [(0, [20, 20, 20]), (1, [40, 40, 40]), (3, [160, 160, 160])]
+    test_res_scale(res_scales, iso=True)

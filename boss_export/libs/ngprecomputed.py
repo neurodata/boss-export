@@ -1,5 +1,5 @@
 import gzip
-import json
+import math
 
 import brotli
 import requests
@@ -175,8 +175,8 @@ def save_obj(
     return resp
 
 
-def get_scale_at_res(base_scale, res):
-    """Returns voxel resolution at a given resolution of precomptued volume (anisotropic)
+def get_scale_at_res(base_scale, res, iso=False):
+    """Returns voxel resolution at a given resolution of precomptued volume
     res=0 is base resolution
 
     Raises: ValueError if any element in base_scale < 1
@@ -186,4 +186,22 @@ def get_scale_at_res(base_scale, res):
     except AssertionError:
         raise ValueError("voxel resolution is < 1")
 
-    return [s * 2 ** res for s in base_scale[0:2]] + [base_scale[2]]
+    if iso:
+        factor = (2, 2, 2)
+    else:
+        factor = (2, 2, 1)
+
+    return [s * f ** res for s, f in zip(base_scale, factor)]
+
+
+def get_extent_at_res(base_extent, res, iso=False):
+    """Returns extent at a given resolution of precomptued volume
+    res=0 is base resolution
+    """
+
+    if iso:
+        factor = (2, 2, 2)
+    else:
+        factor = (2, 2, 1)
+
+    return [math.ceil(e / f ** res) for e, f in zip(base_extent, factor)]

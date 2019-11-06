@@ -63,6 +63,7 @@ def create_precomputed_volume(s3_resource, **kwargs):
         max_mip=kwargs["num_hierarchy_levels"] - 1
         if kwargs["downsample_status"] == "DOWNSAMPLED"
         else 1,
+        factor=(2, 2, 1) if kwargs["hierarchy_method"] == "anisotropic" else (2, 2, 2),
     )
 
     # Don't use cloudvolume to submit the JSON, just use boto3 directly
@@ -124,10 +125,6 @@ def create_cube_metadata(metadata, xx, yy, zz, res, scale_at_res, extent_at_res)
 
     cube_metadata.update(cube_info)
 
-    cube_metadata["input_cube_size"] = CUBE_SIZE
-    cube_metadata["compression"] = COMPRESSION
-    cube_metadata["boss_bucket"] = BOSS_BUCKET
-
     return cube_metadata
 
 
@@ -142,11 +139,13 @@ def return_xyz_keys(offset, extent, cube_size):
 def return_messages(metadata):
     """Given metadata about a dataset, generate messages for each cuboid to transfer"""
 
-    # coll,exp,ch,exp_description,num_hierarchy_levels,dtype,x_start,x_stop,y_start,y_stop,z_start,z_stop,coll_ids,exp_ids,ch_ids
-    # kharris15,apical,em,Apical Dendrite Volume,3,uint8,0,8192,0,8192,0,194,4,2,2
-
     offset = metadata["x_start"], metadata["y_start"], metadata["z_start"]
     extent = metadata["x_stop"], metadata["y_stop"], metadata["z_stop"]
+
+    if metadata["hierarchy_method"] == "isotropic":
+        iso = True
+    else:
+        iso = False
 
     # iterate over res
     if metadata["downsample_status"] == "DOWNSAMPLED":
@@ -155,8 +154,8 @@ def return_messages(metadata):
         res_levels = 1  # only one level (res 0)
 
     for res in range(res_levels):  # w/ 4 levels, you have 0,1,2,3
-        scale_at_res = ngprecomputed.get_scale_at_res(metadata["scale"], res)
-        extent_at_res = [math.ceil(e / 2 ** res) for e in extent[0:2]] + [extent[2]]
+        scale_at_res = ngprecomputed.get_scale_at_res(metadata["scale"], res, iso=iso)
+        extent_at_res = ngprecomputed.get_extent_at_res(extent, res, iso=iso)
 
         for xx, yy, zz in return_xyz_keys(offset, extent_at_res, CUBE_SIZE):
             cube_metadata = create_cube_metadata(
@@ -245,6 +244,9 @@ def get_ch_metadata(coll, exp, ch, dest_bucket):
     )
 
     metadata["chunk_size"] = CUBE_SIZE
+    metadata["input_cube_size"] = CUBE_SIZE
+    metadata["compression"] = COMPRESSION
+    metadata["boss_bucket"] = BOSS_BUCKET
 
     return metadata
 
