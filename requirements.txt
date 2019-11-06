@@ -1,7 +1,9 @@
-blosc==1.5.0 # for lambda compatibility
+blosc==1.5.1 # for lambda compatibility?
 boto3
 morton-py
 numpy
 requests
-cloud-volume
 pandas
+click
+-e git+git://github.com/neurodata/cloud-volume@voxel-res-non-int#egg=cloud-volume
+brotli
