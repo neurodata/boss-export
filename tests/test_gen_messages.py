@@ -102,3 +102,12 @@ def test_create_cube_metadata():
     )
 
     assert sorted(list(msg.keys())) == sorted(expected_keys)
+
+
+def test_clamp_offset():
+    cube_size = 512, 512, 16
+    offset_inputs = [[0, 0, 0], [0, 0, 30], [0, 0, 2013], [0, 0, 1]]
+    offset_outputs = [[0, 0, 0], [0, 0, 16], [0, 0, 2000], [0, 0, 0]]
+    for offset_input, offset_output in zip(offset_inputs, offset_outputs):
+        offset_clamp = gen_messages.clamp_offset(offset_input, cube_size=cube_size)
+        assert offset_clamp == offset_output

@@ -107,7 +107,7 @@ def create_cube_metadata(metadata, xx, yy, zz, res, scale_at_res, extent_at_res)
     coll_id = metadata["coll_ids"]
     exp_id = metadata["exp_ids"]
     ch_id = metadata["ch_ids"]
-    offset = metadata["x_start"], metadata["y_start"], metadata["z_start"]
+    offset = metadata["offset"]
 
     cube_metadata = dict(metadata)
     s3key = create_key(xx, yy, zz, coll_id, exp_id, ch_id, res, offset)
@@ -138,8 +138,8 @@ def return_xyz_keys(offset, extent, cube_size):
 def return_messages(metadata):
     """Given metadata about a dataset, generate messages for each cuboid to transfer"""
 
-    offset = metadata["x_start"], metadata["y_start"], metadata["z_start"]
-    extent = metadata["x_stop"], metadata["y_stop"], metadata["z_stop"]
+    offset = metadata["offset"]
+    extent = metadata["extent"]
 
     if metadata["hierarchy_method"] == "isotropic":
         iso = True
@@ -199,6 +199,12 @@ def send_messages(msgs):
         send_msgs_batch_partial(batch)
 
 
+def clamp_offset(offset, cube_size=CUBE_SIZE):
+    """Returns a clamped offset to the cube size
+    """
+    return [o // c * c for o, c in zip(offset, cube_size)]
+
+
 def get_ch_metadata(coll, exp, ch, dest_bucket):
     """given a coll, exp, ch strings
     returns as a dict the row from the csv file with metadata about this channel
@@ -235,7 +241,9 @@ def get_ch_metadata(coll, exp, ch, dest_bucket):
 
     # get the extent, offset, and volume size of the data
     metadata["extent"] = metadata["x_stop"], metadata["y_stop"], metadata["z_stop"]
-    metadata["offset"] = metadata["x_start"], metadata["y_start"], metadata["z_start"]
+    metadata["offset"] = clamp_offset(
+        (metadata["x_start"], metadata["y_start"], metadata["z_start"])
+    )
 
     # volume size is the actual volume that data exists in (like the size of a numpy array)
     metadata["volume_size"] = tuple(
