@@ -64,21 +64,6 @@ def get_scales_ngpath(ngpath):
     return info
 
 
-def get_scale(base_scale, res, iso=False):
-    """base_scale is [x, y, z] voxel sizes in nm at res 0
-    returns: scale string at res
-    >> get_scale([4, 4, 40], 3)
-    [32,32,40]
-    """
-
-    if iso:
-        scale = [s * 2 ** res for s in base_scale]
-    else:
-        scale = [s * 2 ** res for s in base_scale[0:2]] + [base_scale[2]]
-
-    return scale
-
-
 def numpy_chunk(data_array, compression="gzip"):
     data_xyz = data_array.T
     if compression == "gzip":  # gzip
@@ -125,7 +110,7 @@ def get_chunk_name(
         ]
     )
 
-    scale = get_scale(basescale, res, iso)
+    scale = get_scale_at_res(basescale, res, iso)
     scale_str = "_".join([str(s) for s in scale])
 
     return f"{scale_str}/{xyz_str}"
@@ -191,7 +176,9 @@ def get_scale_at_res(base_scale, res, iso=False):
     else:
         factor = (2, 2, 1)
 
-    return [s * f ** res for s, f in zip(base_scale, factor)]
+    scale = [s * f ** res for s, f in zip(base_scale, factor)]
+
+    return [int(s) if s == int(s) else s for s in scale]
 
 
 def get_extent_at_res(base_extent, res, iso=False):

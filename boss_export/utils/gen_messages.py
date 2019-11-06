@@ -45,6 +45,14 @@ COMPRESSION = "br"
 def create_precomputed_volume(s3_resource, **kwargs):
     """Use CloudVolume to create the precomputed info file"""
 
+    vol_size = [e - o for e, o in zip(kwargs["extent"], kwargs["offset"])]
+    max_mip = (
+        kwargs["num_hierarchy_levels"] - 1
+        if kwargs["downsample_status"] == "DOWNSAMPLED"
+        else 1
+    )
+    factor = (2, 2, 1) if kwargs["hierarchy_method"] == "anisotropic" else (2, 2, 2)
+
     info = CloudVolume.create_new_info(
         num_channels=1,
         layer_type=kwargs["layer_type"],
@@ -57,12 +65,10 @@ def create_precomputed_volume(s3_resource, **kwargs):
         # Pick a convenient size for your underlying chunk representation
         # Powers of two are recommended, doesn't need to cover image exactly
         chunk_size=kwargs["chunk_size"],  # units are voxels
-        volume_size=kwargs["extent"],  # units are voxels
+        volume_size=vol_size,  # units are voxels
         # undocumented param that creates the info w/ that many scales
-        max_mip=kwargs["num_hierarchy_levels"] - 1
-        if kwargs["downsample_status"] == "DOWNSAMPLED"
-        else 1,
-        factor=(2, 2, 1) if kwargs["hierarchy_method"] == "anisotropic" else (2, 2, 2),
+        max_mip=max_mip,
+        factor=factor,
     )
 
     # Don't use cloudvolume to submit the JSON, just use boto3 directly

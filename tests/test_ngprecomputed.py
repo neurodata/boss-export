@@ -38,29 +38,6 @@ def test_get_scales_ngpath():
     )
 
 
-def test_get_scale():
-    scales = [
-        [4, 4, 40],
-        [8, 8, 40],
-        [16, 16, 40],
-        [32, 32, 40],
-        [64, 64, 40],
-        [128, 128, 40],
-        [256, 256, 40],
-        [512, 512, 40],
-        [1024, 1024, 40],
-        [2048, 2048, 40],
-    ]
-
-    for res in range(0, 10):
-        assert scales[res] == ngprecomputed.get_scale(scales[0], res)
-
-    for res in range(0, 10):
-        assert scales[res][0:2] + [
-            scales[res][2] * 2 ** res
-        ] == ngprecomputed.get_scale(scales[0], res, iso=True)
-
-
 def test_ng_key():
     dataset = "bock11_test"
     layer = "image_test"
@@ -211,7 +188,7 @@ def test_get_scale_at_res():
         base_scale = res_scales[0][1]
         for res, scale in res_scales:
             scale_at_res = ngprecomputed.get_scale_at_res(base_scale, res, iso)
-            assert scale_at_res == scale
+            assert all([str(s) == str(t) for s, t in zip(scale_at_res, scale)])
 
     res_scales = [(0, [2, 2, 50]), (1, [4, 4, 50])]
     test_res_scale(res_scales)
@@ -230,3 +207,25 @@ def test_get_scale_at_res():
 
     res_scales = [(0, [20, 20, 20]), (1, [40, 40, 40]), (3, [160, 160, 160])]
     test_res_scale(res_scales, iso=True)
+
+    scales = [
+        [4, 4, 40],
+        [8, 8, 40],
+        [16, 16, 40],
+        [32, 32, 40],
+        [64, 64, 40],
+        [128, 128, 40],
+        [256, 256, 40],
+        [512, 512, 40],
+        [1024, 1024, 40],
+        [2048, 2048, 40],
+    ]
+
+    for res in range(0, 10):
+        assert scales[res] == ngprecomputed.get_scale_at_res(scales[0], res)
+
+    for res in range(0, 10):
+        assert scales[res][0:2] + [
+            scales[res][2] * 2 ** res
+        ] == ngprecomputed.get_scale_at_res(scales[0], res, iso=True)
+
