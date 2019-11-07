@@ -49,7 +49,7 @@ def create_precomputed_volume(s3_resource, **kwargs):
     max_mip = (
         kwargs["num_hierarchy_levels"] - 1
         if kwargs["downsample_status"] == "DOWNSAMPLED"
-        else 1
+        else 0
     )
     factor = (2, 2, 1) if kwargs["hierarchy_method"] == "anisotropic" else (2, 2, 2)
 
