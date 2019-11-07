@@ -211,7 +211,7 @@ def clamp_offset(offset, cube_size=CUBE_SIZE):
     return [o // c * c for o, c in zip(offset, cube_size)]
 
 
-def get_ch_metadata(coll, exp, ch, dest_bucket):
+def get_ch_metadata(coll, exp, ch, dest_bucket, layer_path=None):
     """given a coll, exp, ch strings
     returns as a dict the row from the csv file with metadata about this channel
     """
@@ -221,12 +221,12 @@ def get_ch_metadata(coll, exp, ch, dest_bucket):
     df = df[(df["coll"] == coll) & (df["exp"] == exp) & (df["ch"] == ch)]
     metadata = df.to_dict(orient="records")[0]
 
-    # generate the path to the precomputed volume
-    layer_path = "/".join((metadata["coll"], metadata["exp"], metadata["ch"]))
+    if layer_path is None:
+        # generate the path to the precomputed volume
+        layer_path = "/".join((metadata["coll"], metadata["exp"], metadata["ch"]))
 
     metadata["layer_path"] = layer_path
     metadata["dest_bucket"] = dest_bucket
-    metadata["path"] = f"s3://{dest_bucket}/{layer_path}/"
 
     # set some metadata about the channel
     if metadata["dtype"] in ["uint8", "uint16"]:
@@ -269,11 +269,14 @@ def get_ch_metadata(coll, exp, ch, dest_bucket):
 @click.argument("exp")
 @click.argument("ch")
 @click.argument("dest_bucket")
+@click.option(
+    "-l", "--layerpath", default=None, help="Path on bucket (defaults to coll/exp/ch)"
+)
 # "ZBrain", "ZBrain", "ZBB_y385-Cre"
-def gen_messages(coll, exp, ch, dest_bucket):
+def gen_messages(coll, exp, ch, dest_bucket, layerpath):
 
     # get the metadata for this channel
-    ch_metadata = get_ch_metadata(coll, exp, ch, dest_bucket)
+    ch_metadata = get_ch_metadata(coll, exp, ch, dest_bucket, layer_path=layerpath)
 
     # create the precomputed volume
     create_precomputed_volume(S3_RESOURCE, **ch_metadata)
