@@ -235,6 +235,8 @@ def get_ch_metadata(coll, exp, ch, dest_bucket, layer_path=None):
     else:
         metadata["layer_type"] = "segmentation"
         metadata["encoding"] = "compressed_segmentation"
+        # downsampled annotation data in BOSS is not good
+        metadata["num_hierarchy_levels"] = 1
 
     # get the scale for res 0 data
     metadata["scale"] = bosslib.get_scale(
