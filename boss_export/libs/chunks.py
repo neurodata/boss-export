@@ -2,6 +2,8 @@
 
 import numpy as np
 
+import boss_export.libs.py_compressed_segmentation as csegpy
+
 # from PIL import Image
 
 
@@ -44,3 +46,7 @@ def encode_raw(subvol):
 
 def decode_raw(bytestring, shape, dtype):
     return np.frombuffer(bytearray(bytestring), dtype=dtype).reshape(shape, order="F")
+
+
+def encode_compressed_segmentation_pure_python(subvol, block_size):
+    return csegpy.encode_chunk(subvol.T, block_size=block_size)

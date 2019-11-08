@@ -7,7 +7,7 @@ import pytest
 from pytest import raises
 from requests import exceptions
 
-from boss_export.libs import bosslib, mortonxyz, ngprecomputed
+from boss_export.libs import bosslib, chunks, mortonxyz, ngprecomputed
 
 
 #! failing because offset not aligned with the cube size
@@ -229,3 +229,14 @@ def test_get_scale_at_res():
             scales[res][2] * 2 ** res
         ] == ngprecomputed.get_scale_at_res(scales[0], res, iso=True)
 
+
+def test_numpy_chunk_segmentation():
+    data_array = np.random.randint(0, 10, (1, 16, 512, 512), "uint64")
+
+    bstring_br = ngprecomputed.numpy_chunk(data_array, compression="")
+
+    block_size = (8, 8, 8)
+    bstring_br_test = chunks.encode_compressed_segmentation_pure_python(
+        data_array.T, block_size
+    )
+    assert bstring_br == bstring_br_test

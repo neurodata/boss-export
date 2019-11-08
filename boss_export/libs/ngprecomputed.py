@@ -1,7 +1,9 @@
 import gzip
 import math
+from functools import partial
 
 import brotli
+import numpy as np
 import requests
 
 from boss_export.libs import chunks, mortonxyz
@@ -65,15 +67,27 @@ def get_scales_ngpath(ngpath):
 
 
 def numpy_chunk(data_array, compression="gzip"):
+    def raw(x):
+        return x
+
     data_xyz = data_array.T
     if compression == "gzip":  # gzip
-        comp_array = gzip.compress(chunks.encode_raw(data_xyz))
+        compress = gzip.compress
     elif compression == "br":  # brotli
-        comp_array = brotli.compress(chunks.encode_raw(data_xyz), quality=6)
+        compress = partial(brotli.compress, quality=6)
     elif compression == "":  # raw
-        comp_array = chunks.encode_raw(data_xyz)
+        compress = raw
     else:
         raise NotImplementedError("Unsupported compression format")
+
+    if np.dtype(data_array.dtype) in (np.uint8, np.uint16):
+        encode = chunks.encode_raw
+    else:
+        encode = partial(
+            chunks.encode_compressed_segmentation_pure_python, block_size=(8, 8, 8)
+        )
+
+    comp_array = compress(encode(data_xyz))
 
     return comp_array
 

@@ -38,9 +38,13 @@ def convert_cuboid(msg):
     else:
         iso = False
 
+    print("getting bosskey parts")
+
     # object naming
     # - decode the object name into its parts: morton ID, res, table keys
     bosskey = bosslib.parts_from_bosskey(s3Key)
+
+    print("getting data from boss")
 
     # get obj
     # decompress the object from boss format to numpy
@@ -52,13 +56,19 @@ def convert_cuboid(msg):
         print(s3Key, str(e))
         return
 
+    print("getting xyz from morton")
+
     # get the coordinates of the cube
     xyz_coords = mortonxyz.get_coords(bosskey.mortonid, input_cube_size)
+
+    print("cropping data to extent")
 
     # need to reshape and reset size when at edges
     data_array_crop = ngprecomputed.crop_to_extent(
         data_array, xyz_coords, extent_at_res
     )
+
+    print("getting ng morton id")
 
     # boss mortonid has offset embedded in it
     ngmorton = ngprecomputed.ngmorton(bosskey.mortonid, input_cube_size, offset)
@@ -66,15 +76,20 @@ def convert_cuboid(msg):
     # get the shape of the object
     shape = data_array_crop.shape
 
+    print("compute ng s3key")
+
     # compute neuroglancer key (w/ offset in name)
     chunk_name = ngprecomputed.get_chunk_name(
         ngmorton, scale, bosskey.res, chunk_size, shape, offset, iso=iso
     )
     ngkey = ngprecomputed.get_ng_key(dest_dataset, None, chunk_name)
 
-    # saving it out
-    # compress the object to neuroglancer format (gzip serialized numpy)
+    print("compressing the array")
+
+    # compress the object to neuroglancer format (compressed serialized numpy)
     ngdata = ngprecomputed.numpy_chunk(data_array_crop, compression)
+
+    print("saving the ng object")
 
     # save object to the target bucket and path
     ngprecomputed.save_obj(
