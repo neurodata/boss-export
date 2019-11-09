@@ -49,4 +49,4 @@ def decode_raw(bytestring, shape, dtype):
 
 
 def encode_compressed_segmentation_pure_python(subvol, block_size):
-    return csegpy.encode_chunk(subvol.T, block_size=block_size)
+    return csegpy.encode_chunk(subvol, block_size=block_size)

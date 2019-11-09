@@ -231,7 +231,7 @@ def test_get_scale_at_res():
 
 
 def test_numpy_chunk_segmentation():
-    data_array = np.random.randint(0, 10, (1, 16, 512, 512), "uint64")
+    data_array = np.random.randint(0, 10, (16, 512, 512), "uint64")
 
     bstring_br = ngprecomputed.numpy_chunk(data_array, compression="")
 
