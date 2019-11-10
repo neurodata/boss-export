@@ -7,6 +7,7 @@ import pytest
 from pytest import raises
 from requests import exceptions
 
+import boss_export.libs.py_compressed_segmentation as csegpy
 from boss_export.libs import bosslib, mortonxyz, ngprecomputed
 
 
@@ -229,3 +230,14 @@ def test_get_scale_at_res():
             scales[res][2] * 2 ** res
         ] == ngprecomputed.get_scale_at_res(scales[0], res, iso=True)
 
+
+def test_numpy_chunk_segmentation():
+    data_array = np.random.randint(0, 10, (16, 512, 512), "uint64")
+
+    bstring_br = ngprecomputed.numpy_chunk(data_array, compression="")
+
+    block_size = (8, 8, 8)
+    bstring_br_test = csegpy.encode_chunk(
+        np.expand_dims(data_array, axis=0), block_size
+    )
+    assert bstring_br == bstring_br_test
