@@ -70,7 +70,6 @@ def numpy_chunk(data_array, compression="gzip"):
     def raw(x):
         return x
 
-    data_xyz = data_array.T
     if compression == "gzip":  # gzip
         compress = gzip.compress
     elif compression == "br":  # brotli
@@ -81,15 +80,16 @@ def numpy_chunk(data_array, compression="gzip"):
         raise NotImplementedError("Unsupported compression format")
 
     if np.dtype(data_array.dtype) in (np.uint8, np.uint16):
+        data_encode = data_array.T
         encode = chunks.encode_raw
     else:
         # the compressed seg expects there to be 4D (first dim is channel)
-        data_xyz = np.expand_dims(data_xyz, axis=0)
+        data_encode = np.expand_dims(data_array, axis=0)
         encode = partial(
             chunks.encode_compressed_segmentation_pure_python, block_size=(8, 8, 8)
         )
 
-    comp_array = compress(encode(data_xyz))
+    comp_array = compress(encode(data_encode))
 
     return comp_array
 

@@ -7,7 +7,8 @@ import pytest
 from pytest import raises
 from requests import exceptions
 
-from boss_export.libs import bosslib, chunks, mortonxyz, ngprecomputed
+import boss_export.libs.py_compressed_segmentation as csegpy
+from boss_export.libs import bosslib, mortonxyz, ngprecomputed
 
 
 #! failing because offset not aligned with the cube size
@@ -236,7 +237,7 @@ def test_numpy_chunk_segmentation():
     bstring_br = ngprecomputed.numpy_chunk(data_array, compression="")
 
     block_size = (8, 8, 8)
-    bstring_br_test = chunks.encode_compressed_segmentation_pure_python(
-        data_array.T, block_size
+    bstring_br_test = csegpy.encode_chunk(
+        np.expand_dims(data_array, axis=0), block_size
     )
     assert bstring_br == bstring_br_test
