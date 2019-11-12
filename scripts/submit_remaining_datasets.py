@@ -2,7 +2,7 @@ from multiprocessing import Pool
 
 import pandas as pd
 
-from boss_export.utils import gen_messages
+from boss_export.utils.gen_messages import gen_messages
 
 DEST_BUCKET = "open-neurodata"
 
