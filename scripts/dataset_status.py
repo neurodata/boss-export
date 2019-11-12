@@ -8,20 +8,17 @@ import pandas as pd
 
 OPEN_DATA_BUCKET_URL = "https://open-neurodata.s3.amazonaws.com"
 
-#%%
-# read the data
-df = pd.read_csv("scripts/public_datasets_downsample.csv", na_filter=False)
-# removing empty/dev channels in boss
-df = df[(df["ch"] != "empty") & (df["ch"] != "dev")]
-
-# we transferred these into a different prefix
-df = df[(df["coll"] != "bock") & (df["exp"] != "kasthuri14s1colANNO")]
-
 
 #%%
 def return_url_dataset(coll, exp, ch):
     return f"{OPEN_DATA_BUCKET_URL}/{coll}/{exp}/{ch}/info"
 
+
+#%%
+# read the data
+df = pd.read_csv("scripts/public_datasets_downsample.csv", na_filter=False)
+# removing empty/dev channels in boss
+df = df[(df["ch"] != "empty") & (df["ch"] != "dev")]
 
 
 # %%
@@ -44,10 +41,15 @@ async with aiohttp.ClientSession() as session:
                 data = ",".join(map(str, dataset.to_list())) + "," + str(resp.status) + "\n"
                 await f.write(data)
 
+
 #%%
 df_to_do = pd.read_csv(outfname, na_filter=False)
+# we transferred these into a different prefix
+df_to_do.loc[(df_to_do["coll"] == "bock") | (df_to_do["exp"] == "kasthuri14s1colANNO"), "status_code"] = 200
+
 df_to_do = df_to_do[df_to_do["status_code"] != 200]
 
-df_to_do.to_csv("scripts/public_data_sets_to_tx.csv", index=False)
 
 # %%
+df_to_do.to_csv("scripts/public_data_sets_to_tx.csv", index=False)
+print("done")

@@ -265,17 +265,7 @@ def get_ch_metadata(coll, exp, ch, dest_bucket, layer_path=None):
     return metadata
 
 
-@click.command()
-@click.argument("coll")
-@click.argument("exp")
-@click.argument("ch")
-@click.argument("dest_bucket")
-@click.option(
-    "-l", "--layerpath", default=None, help="Path on bucket (defaults to coll/exp/ch)"
-)
-# "ZBrain", "ZBrain", "ZBB_y385-Cre"
-def gen_messages(coll, exp, ch, dest_bucket, layerpath):
-
+def gen_messages_non_click(coll, exp, ch, dest_bucket, layerpath=None):
     # get the metadata for this channel
     ch_metadata = get_ch_metadata(coll, exp, ch, dest_bucket, layer_path=layerpath)
 
@@ -286,6 +276,19 @@ def gen_messages(coll, exp, ch, dest_bucket, layerpath):
 
     # iterate through dataset, generating s3keys, and send them to queue
     send_messages(msgs)
+
+
+@click.command()
+@click.argument("coll")
+@click.argument("exp")
+@click.argument("ch")
+@click.argument("dest_bucket")
+@click.option(
+    "-l", "--layerpath", default=None, help="Path on bucket (defaults to coll/exp/ch)"
+)
+# "ZBrain", "ZBrain", "ZBB_y385-Cre"
+def gen_messages(coll, exp, ch, dest_bucket, layerpath):
+    gen_messages_non_click(coll, exp, ch, dest_bucket, layerpath)
 
 
 if __name__ == "__main__":
