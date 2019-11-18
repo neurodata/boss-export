@@ -31,11 +31,20 @@ for index, row in df.iterrows():
     ch_id = row["ch_ids"]
 
     mycursor.execute(
-        f"select experiment.name,coordinate_frame.name,x_voxel_size,y_voxel_size,z_voxel_size,voxel_unit,experiment.hierarchy_method,downsample_status,auth_user.email from coordinate_frame inner join experiment on coordinate_frame.id = experiment.coord_frame_id inner join channel on channel.experiment_id = experiment.id inner join auth_user on channel.creator_id = auth_user.id where experiment.id = {exp_id}"
+        f"""select experiment.name,coordinate_frame.name,x_voxel_size,y_voxel_size,z_voxel_size,voxel_unit,experiment.hierarchy_method,downsample_status,auth_user.email 
+        from coordinate_frame 
+        inner join experiment on coordinate_frame.id = experiment.coord_frame_id 
+        inner join channel 
+        inner join auth_user on channel.creator_id = auth_user.id 
+        where experiment.id = {exp_id} and channel.id = {ch_id}"""
     )
 
-    result = mycursor.fetchall()[0]
+    results = mycursor.fetchall()
 
+    if len(results) > 1:
+        print(f"got more than one result for exp_id {exp_id}, ch_id {ch_id}")
+
+    result = results[0]
     if result:
         x_voxel_sizes.append(result[2])
         y_voxel_sizes.append(result[3])
