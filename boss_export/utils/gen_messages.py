@@ -31,6 +31,7 @@ os.environ["AWS_SECRET_ACCESS_KEY"] = credentials.secret_key
 
 SQS = SESSION.resource("sqs", region_name="us-east-1")
 SQS_NAME = "copy-boss-cuboids"
+QUEUE_COUNT = 4
 
 # globals
 PUBLIC_METADATA = "scripts/public_datasets_downsample.csv"
@@ -86,27 +87,31 @@ def create_precomputed_volume(s3_resource, **kwargs):
     assert resp["ResponseMetadata"]["HTTPStatusCode"] == 200
 
 
-def create_or_get_queue():
-    try:
-        queue = SQS.get_queue_by_name(QueueName=SQS_NAME)
-    except ClientError as e:
-        print(str(e))
-        # create the queue
-        queue = SQS.create_queue(
-            QueueName=SQS_NAME,
-            Attributes={
-                "DelaySeconds": "5",
-                "ReceiveMessageWaitTimeSeconds": "5",
-                "VisibilityTimeout": "600",  # lamda timeout is 1.5 minutes
-                "RedrivePolicy": json.dumps(
-                    {
-                        "deadLetterTargetArn": "arn:aws:sqs:us-east-1:950331671021:copy-boss-cuboids-deadletter",
-                        "maxReceiveCount": "5",
-                    }
-                ),
-            },
-        )
-    return queue
+def create_or_get_queues():
+    queues = []
+    for queue_num in range(QUEUE_COUNT):
+        queue_name = f"{SQS_NAME}_{queue_num+1}"
+        try:
+            queue = SQS.get_queue_by_name(QueueName=queue_name)
+        except ClientError as e:
+            print(str(e))
+            # create the queue
+            queue = SQS.create_queue(
+                QueueName=queue_name,
+                Attributes={
+                    "DelaySeconds": "5",
+                    "ReceiveMessageWaitTimeSeconds": "5",
+                    "VisibilityTimeout": "540",  # lamda timeout is 1.5 minutes
+                    "RedrivePolicy": json.dumps(
+                        {
+                            "deadLetterTargetArn": "arn:aws:sqs:us-east-1:950331671021:copy-boss-cuboids-deadletter",
+                            "maxReceiveCount": "5",
+                        }
+                    ),
+                },
+            )
+        queues.append(queue)
+    return queues
 
 
 def create_cube_metadata(metadata, xx, yy, zz, res, scale_at_res, extent_at_res):
@@ -199,10 +204,13 @@ def send_msgs_batch(msg_batch, queue):
 def send_messages(msgs):
     maxBatchSize = 10  # current maximum allowed
 
-    send_msgs_batch_partial = partial(send_msgs_batch, queue=create_or_get_queue())
+    queues = create_or_get_queues()
 
+    queue_idx = 0
     for batch in chunks(msgs, maxBatchSize):
-        send_msgs_batch_partial(batch)
+        # this alternates sending messages to different queues
+        send_msgs_batch(batch, queue=queues[queue_idx])
+        queue_idx = (queue_idx + 1) % len(queues)
 
 
 def clamp_offset(offset, cube_size=CUBE_SIZE):
