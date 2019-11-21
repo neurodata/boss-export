@@ -150,27 +150,40 @@ def save_obj(
     bucket,
     ngkey,
     data,
-    storage_class=None,
-    content_encoding="gzip",
+    storage_class="INTELLIGENT_TIERING",
+    content_encoding=None,
     cache_control="max-age=3600, s-max-age=3600",
     content_type="application/octet-stream",
+    public=True,
+    owner_id=None,
 ):
     """Saves data into a bucket with the parameters needed for neuroglancer
     Returns: dict
     """
 
-    if storage_class is None:
-        storage_class = "INTELLIGENT_TIERING"
+    kwargs = {}
+    if public:
+        kwargs["GrantRead"] = 'uri="http://acs.amazonaws.com/groups/global/AllUsers"'
+
+    if owner_id is None:
+        if public and bucket in ["open-neurodata", "open-neurodata-test"]:
+            # set to open-data-bucket
+            kwargs[
+                "GrantFullControl"
+            ] = "id=7c79f0c2067662c1a9274f7307b10136544223f9f9d4cd1f2d8d8931a04b99a6"
+        else:
+            kwargs["ACL"] = "bucket-owner-full-control"
+
+    if content_encoding is not None:
+        kwargs["ContentEncoding"] = content_encoding
 
     obj = s3_resource.Object(bucket, ngkey)
     resp = obj.put(
         Body=data,
         StorageClass=storage_class,
         CacheControl=cache_control,
-        ContentEncoding=content_encoding,
         ContentType=content_type,
-        GrantRead='uri="http://acs.amazonaws.com/groups/global/AllUsers"',
-        GrantFullControl="id=7c79f0c2067662c1a9274f7307b10136544223f9f9d4cd1f2d8d8931a04b99a6",
+        **kwargs,
     )
 
     return resp

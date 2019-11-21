@@ -5,7 +5,6 @@ outputs messages in SQS for every cuboid in BOSS
 import itertools
 import json
 import os
-from functools import partial
 
 import boto3
 import click
@@ -80,9 +79,11 @@ def create_precomputed_volume(s3_resource, **kwargs):
         kwargs["dest_bucket"],
         infokey,
         json.dumps(info),
-        content_encoding="",
+        storage_class="STANDARD",
         cache_control="no-cache",
         content_type="application/json",
+        public=kwargs["public"],
+        owner_id=kwargs["owner_id"],
     )
     assert resp["ResponseMetadata"]["HTTPStatusCode"] == 200
 
@@ -219,7 +220,9 @@ def clamp_offset(offset, cube_size=CUBE_SIZE):
     return [o // c * c for o, c in zip(offset, cube_size)]
 
 
-def get_ch_metadata(coll, exp, ch, dest_bucket, layer_path=None):
+def get_ch_metadata(
+    coll, exp, ch, dest_bucket, layer_path=None, owner=None, public=True
+):
     """given a coll, exp, ch strings
     returns as a dict the row from the csv file with metadata about this channel
     """
@@ -270,12 +273,19 @@ def get_ch_metadata(coll, exp, ch, dest_bucket, layer_path=None):
     metadata["compression"] = COMPRESSION
     metadata["boss_bucket"] = BOSS_BUCKET
 
+    metadata["owner_id"] = owner
+    metadata["public"] = public
+
     return metadata
 
 
-def gen_messages_non_click(coll, exp, ch, dest_bucket, layerpath=None):
+def gen_messages_non_click(
+    coll, exp, ch, dest_bucket, layerpath=None, owner=None, public=True
+):
     # get the metadata for this channel
-    ch_metadata = get_ch_metadata(coll, exp, ch, dest_bucket, layer_path=layerpath)
+    ch_metadata = get_ch_metadata(
+        coll, exp, ch, dest_bucket, layer_path=layerpath, owner=owner, public=public
+    )
 
     # create the precomputed volume
     create_precomputed_volume(S3_RESOURCE, **ch_metadata)
@@ -294,9 +304,18 @@ def gen_messages_non_click(coll, exp, ch, dest_bucket, layerpath=None):
 @click.option(
     "-l", "--layerpath", default=None, help="Path on bucket (defaults to coll/exp/ch)"
 )
+@click.option(
+    "-o",
+    "--owner",
+    default=None,
+    help="AWS ID for object ownership. If none set to open-neurodata account",
+)
+@click.option(
+    "-p", "--public", is_flag=True, help="Flag for public objects",
+)
 # "ZBrain", "ZBrain", "ZBB_y385-Cre"
-def gen_messages(coll, exp, ch, dest_bucket, layerpath):
-    gen_messages_non_click(coll, exp, ch, dest_bucket, layerpath)
+def gen_messages(coll, exp, ch, dest_bucket, layerpath, owner, public):
+    gen_messages_non_click(coll, exp, ch, dest_bucket, layerpath, owner, public)
 
 
 if __name__ == "__main__":

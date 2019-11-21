@@ -32,6 +32,8 @@ def convert_cuboid(msg):
     chunk_size = msg["chunk_size"]
     compression = msg["compression"]
     boss_bucket = msg["boss_bucket"]
+    public = msg["public"]
+    owner_id = msg["owner_id"]
 
     if msg["hierarchy_method"] == "isotropic":
         iso = True
@@ -93,7 +95,14 @@ def convert_cuboid(msg):
 
     # save object to the target bucket and path
     ngprecomputed.save_obj(
-        S3_RESOURCE, dest_bucket, ngkey, ngdata, "STANDARD", compression
+        S3_RESOURCE,
+        dest_bucket,
+        ngkey,
+        ngdata,
+        storage_class="INTELLIGENT_TIERING",
+        content_encoding=compression,
+        public=public,
+        owner_id=owner_id,
     )
 
     print("Converted to:", ngkey)
