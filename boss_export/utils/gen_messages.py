@@ -34,7 +34,7 @@ SQS_NAME = "copy-boss-cuboids"
 QUEUE_COUNT = 4
 
 # globals
-PUBLIC_METADATA = "scripts/public_datasets_downsample.csv"
+PUBLIC_METADATA = "scripts/all_datasets_ids.csv"
 
 BOSS_BUCKET = "cuboids.production.neurodata"
 T = 0  # this is always 0

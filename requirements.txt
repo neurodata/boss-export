@@ -8,3 +8,5 @@ click
 -e git+git://github.com/neurodata/cloud-volume@voxel-res-non-int#egg=cloud-volume
 brotli
 mysql-connector-python
+PyMySQL
+SQLAlchemy
