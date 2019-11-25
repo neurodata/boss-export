@@ -19,6 +19,11 @@ S3_RESOURCE = boto3.resource("s3")
 def convert_cuboid(msg):
     print("msg", msg)
 
+    if "iam_role" in msg:
+        s3_write_resource = ngprecomputed.assume_role_resource(msg["iam_role"], boto3)
+    else:
+        s3_write_resource = S3_RESOURCE
+
     s3Key = msg["s3key"]
     dtype = msg["dtype"]
     # extent = msg["extent"]
@@ -95,7 +100,7 @@ def convert_cuboid(msg):
 
     # save object to the target bucket and path
     ngprecomputed.save_obj(
-        S3_RESOURCE,
+        s3_write_resource,
         dest_bucket,
         ngkey,
         ngdata,

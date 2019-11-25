@@ -221,7 +221,7 @@ def clamp_offset(offset, cube_size=CUBE_SIZE):
 
 
 def get_ch_metadata(
-    coll, exp, ch, dest_bucket, layer_path=None, owner=None, public=True
+    coll, exp, ch, dest_bucket, layer_path=None, owner=None, public=True, iam_role=None
 ):
     """given a coll, exp, ch strings
     returns as a dict the row from the csv file with metadata about this channel
@@ -276,19 +276,34 @@ def get_ch_metadata(
     metadata["owner_id"] = owner
     metadata["public"] = public
 
+    if iam_role is not None:
+        metadata["iam_role"] = iam_role
+
     return metadata
 
 
 def gen_messages_non_click(
-    coll, exp, ch, dest_bucket, layerpath=None, owner=None, public=True
+    coll, exp, ch, dest_bucket, layerpath=None, owner=None, public=True, iam_role=None
 ):
     # get the metadata for this channel
     ch_metadata = get_ch_metadata(
-        coll, exp, ch, dest_bucket, layer_path=layerpath, owner=owner, public=public
+        coll,
+        exp,
+        ch,
+        dest_bucket,
+        layer_path=layerpath,
+        owner=owner,
+        public=public,
+        iam_role=iam_role,
     )
 
+    if iam_role is not None:
+        s3_write_resource = ngprecomputed.assume_role_resource(iam_role, SESSION)
+    else:
+        s3_write_resource = S3_RESOURCE
+
     # create the precomputed volume
-    create_precomputed_volume(S3_RESOURCE, **ch_metadata)
+    create_precomputed_volume(s3_write_resource, **ch_metadata)
 
     msgs = return_messages(ch_metadata)
 
@@ -310,12 +325,17 @@ def gen_messages_non_click(
     default=None,
     help="AWS ID for object ownership. If none set to open-neurodata account",
 )
+@click.option("-p", "--public", is_flag=True, help="Flag for public objects")
 @click.option(
-    "-p", "--public", is_flag=True, help="Flag for public objects",
+    "--iam_role",
+    default=None,
+    help="IAM role to assume during writes (for cross account writes)",
 )
 # "ZBrain", "ZBrain", "ZBB_y385-Cre"
-def gen_messages(coll, exp, ch, dest_bucket, layerpath, owner, public):
-    gen_messages_non_click(coll, exp, ch, dest_bucket, layerpath, owner, public)
+def gen_messages(coll, exp, ch, dest_bucket, layerpath, owner, public, iam_role):
+    gen_messages_non_click(
+        coll, exp, ch, dest_bucket, layerpath, owner, public, iam_role
+    )
 
 
 if __name__ == "__main__":

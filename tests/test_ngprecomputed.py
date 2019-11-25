@@ -241,3 +241,22 @@ def test_numpy_chunk_segmentation():
         np.expand_dims(data_array, axis=0), block_size
     )
     assert bstring_br == bstring_br_test
+
+
+@pytest.mark.xfail
+def test_assume_role():
+    # will need to specify the IAM to get this to pass
+    # iam = "arn:aws:iam::222222222222:role/role-on-source-account"
+    iam = ""
+
+    session = boto3.Session(profile_name="ben-boss-dev")
+
+    s3_write_resource = ngprecomputed.assume_role_resource(iam, session)
+
+    bucket = "colm-data-from-boss"
+    key = "test1"
+    data = "a string of data"
+
+    ngprecomputed.save_obj(
+        s3_write_resource, bucket, key, data, storage_class="STANDARD", public=False
+    )
