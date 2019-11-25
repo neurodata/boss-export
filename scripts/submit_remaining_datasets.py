@@ -1,35 +1,44 @@
 from multiprocessing import Pool
 
+import click
 import pandas as pd
 
 from boss_export.utils import gen_messages
 
-DEST_BUCKET = "open-neurodata"
 LAYERPATH = None
 OWNER = None
-PUBLIC = True
 
 
-# from dataset_status.py
-df = pd.read_csv("scripts/public_data_sets_to_tx.csv", na_filter=False)
+@click.command()
+@click.argument("dest_bucket")
+@click.option("-p", "--public", is_flag=True, help="Flag for public objects")
+@click.option(
+    "--iam_role",
+    default=None,
+    help="IAM role to assume during writes (for cross account writes)",
+)
+def submit_datasets(dest_bucket, public, iam_role):
+    # from dataset_status.py
+    df = pd.read_csv("scripts/public_data_sets_to_tx.csv", na_filter=False)
 
-# gen_messages_non_click(
-#     coll, exp, ch, dest_bucket, layerpath=None, owner=None, public=True
-# )
-cmd_args = []
-for _, dataset in df.iterrows():
-    cmd_args.append(
-        [
-            dataset["coll"],
-            dataset["exp"],
-            dataset["ch"],
-            DEST_BUCKET,
-            LAYERPATH,
-            OWNER,
-            PUBLIC,
-        ]
-    )
+    cmd_args = []
+    for _, dataset in df.iterrows():
+        cmd_args.append(
+            [
+                dataset["coll"],
+                dataset["exp"],
+                dataset["ch"],
+                dest_bucket,
+                LAYERPATH,
+                OWNER,
+                public,
+                iam_role,
+            ]
+        )
+
+    with Pool(16) as pool:
+        pool.starmap(gen_messages.gen_messages_non_click, cmd_args)
 
 
-with Pool(8) as pool:
-    pool.starmap(gen_messages.gen_messages_non_click, cmd_args)
+if __name__ == "__main__":
+    submit_datasets()  # pylint: disable=no-value-for-parameter
