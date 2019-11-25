@@ -2,6 +2,7 @@ import gzip
 import math
 from functools import partial
 
+import boto3
 import brotli
 import numpy as np
 import requests
@@ -143,6 +144,30 @@ def crop_to_extent(data, xyz, extent):
     data_clip = data[: diff_extent[2], : diff_extent[1], : diff_extent[0]]
 
     return data_clip
+
+
+def assume_role_resource(iam_role, session):
+    # iam_role = "arn:aws:iam::222222222222:role/role-on-source-account"
+    # session is either boto3 or a boto3 Session object
+
+    sts_connection = session.client("sts")
+    acct_b = sts_connection.assume_role(
+        RoleArn=iam_role, RoleSessionName="cross_acct_lambda"
+    )
+
+    ACCESS_KEY = acct_b["Credentials"]["AccessKeyId"]
+    SECRET_KEY = acct_b["Credentials"]["SecretAccessKey"]
+    SESSION_TOKEN = acct_b["Credentials"]["SessionToken"]
+
+    # create service client using the assumed role credentials, e.g. S3
+    resource = boto3.resource(
+        "s3",
+        aws_access_key_id=ACCESS_KEY,
+        aws_secret_access_key=SECRET_KEY,
+        aws_session_token=SESSION_TOKEN,
+    )
+
+    return resource
 
 
 def save_obj(
