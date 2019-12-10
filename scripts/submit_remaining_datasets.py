@@ -1,3 +1,6 @@
+import datetime
+import logging
+import os
 from multiprocessing import Pool
 
 import click
@@ -9,6 +12,12 @@ LAYERPATH = None
 OWNER = None
 
 
+now = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+logfname = f"logs/{now}.log"
+os.makedirs(os.path.dirname(logfname), exist_ok=True)
+logging.basicConfig(filename=logfname, filemode="a")
+
+
 @click.command()
 @click.argument("dest_bucket")
 @click.option("-p", "--public", is_flag=True, help="Flag for public objects")
@@ -18,6 +27,8 @@ OWNER = None
     help="IAM role to assume during writes (for cross account writes)",
 )
 def submit_datasets(dest_bucket, public, iam_role):
+    logging.info(f"Starting data copy. Time is {now}")
+
     # from dataset_status.py
     df = pd.read_csv("scripts/public_data_sets_to_tx.csv", na_filter=False)
 

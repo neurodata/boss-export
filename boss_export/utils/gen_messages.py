@@ -4,7 +4,9 @@ outputs messages in SQS for every cuboid in BOSS
 
 import itertools
 import json
+import logging
 import os
+import time
 
 import boto3
 import click
@@ -13,9 +15,6 @@ from botocore.exceptions import ClientError
 
 from boss_export.libs import bosslib, mortonxyz, ngprecomputed
 from cloudvolume import CloudVolume
-
-# from multiprocessing import Pool
-
 
 SESSION = boto3.Session(profile_name="ben-boss-dev")
 S3_RESOURCE = SESSION.resource("s3")
@@ -230,7 +229,12 @@ def get_ch_metadata(
     # read and parse the CSV file that contains all the public datasets
     df = pd.read_csv(PUBLIC_METADATA, na_filter=False)
     df = df[(df["coll"] == coll) & (df["exp"] == exp) & (df["ch"] == ch)]
-    metadata = df.to_dict(orient="records")[0]
+
+    try:
+        metadata = df.to_dict(orient="records")[0]
+    except IndexError as e:
+        logging.error(f"{coll}, {exp}, {ch} not present.  Error: {str(e)}")
+        raise e
 
     if layer_path is None:
         # generate the path to the precomputed volume
@@ -286,19 +290,35 @@ def gen_messages_non_click(
     coll, exp, ch, dest_bucket, layerpath=None, owner=None, public=True, iam_role=None
 ):
     # get the metadata for this channel
-    ch_metadata = get_ch_metadata(
-        coll,
-        exp,
-        ch,
-        dest_bucket,
-        layer_path=layerpath,
-        owner=owner,
-        public=public,
-        iam_role=iam_role,
-    )
+    try:
+        ch_metadata = get_ch_metadata(
+            coll,
+            exp,
+            ch,
+            dest_bucket,
+            layer_path=layerpath,
+            owner=owner,
+            public=public,
+            iam_role=iam_role,
+        )
+    except IndexError:
+        return None
 
     if iam_role is not None:
-        s3_write_resource = ngprecomputed.assume_role_resource(iam_role, SESSION)
+        # multiple attempts to get around the throttling around assume role
+        attempts = 3
+        for attempt in range(attempts):
+            try:
+                s3_write_resource = ngprecomputed.assume_role_resource(
+                    iam_role, SESSION
+                )
+                break
+            except ClientError as e:
+                time.sleep(2 ** (attempt + 3))
+                logging.warning(f"Tried to assume role, retrying: {str(e)}")
+        else:
+            s3_write_resource = ngprecomputed.assume_role_resource(iam_role, SESSION)
+
     else:
         s3_write_resource = S3_RESOURCE
 
@@ -309,6 +329,8 @@ def gen_messages_non_click(
 
     # iterate through dataset, generating s3keys, and send them to queue
     send_messages(msgs)
+
+    logging.info(f"Completed {coll}/{exp}/{ch}")
 
 
 @click.command()
