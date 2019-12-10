@@ -179,7 +179,7 @@ def save_obj(
     content_encoding=None,
     cache_control="max-age=3600, s-max-age=3600",
     content_type="application/octet-stream",
-    public=True,
+    public=None,
     owner_id=None,
 ):
     """Saves data into a bucket with the parameters needed for neuroglancer
@@ -188,6 +188,7 @@ def save_obj(
 
     kwargs = {}
     if public:
+        # historic... should be applied by bucket policy when assume role as bucket owner
         kwargs["GrantRead"] = 'uri="http://acs.amazonaws.com/groups/global/AllUsers"'
 
     if owner_id is None:
