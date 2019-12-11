@@ -111,3 +111,5 @@ test_data/
 *.txt
 *.zip
 *.old
+
+secrets.ini

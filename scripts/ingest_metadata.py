@@ -1,10 +1,12 @@
 #%%
+import configparser
+import json
+
 import boto3
 import pandas as pd
 from botocore import exceptions
 
 from boss_export.libs import ngprecomputed
-import configparser
 
 #%%
 session = boto3.Session(profile_name="ben-boss-dev")
@@ -16,6 +18,7 @@ config = configparser.ConfigParser()
 config.read("scripts/secrets.ini")
 
 iam_role = config["DEFAULT"]["iam_role"]
+s3_write_resource = ngprecomputed.assume_role_resource(iam_role, session)
 
 #%%
 def check_info(bucket_name, prefix):
@@ -71,10 +74,16 @@ exclude_metadata = ["to_be_deleted", "deleted_status", "downsample_arn"]
 df.drop(exclude_metadata, axis=1, inplace=True)
 
 # %%
-s3_write_resource = ngprecomputed.assume_role_resource(iam_role, session)
-
 for prefix in prefixes:
     parts = prefix.strip("/").split("/")
+    key = prefix + "provenance"
+    try:
+        s3.head_object(Bucket=BUCKET_NAME, Key=key)
+        continue
+    except exceptions.ClientError:
+        # Not found
+        print("sending file...")
+
     if len(parts) == 3:
         coll, exp, ch = parts
 
@@ -85,6 +94,7 @@ for prefix in prefixes:
 
         row = df[(df["coll"] == coll) & (df["exp"] == exp) & (df["ch"] == ch)]
     elif len(parts) == 2:
+        coll = None
         exp, ch = parts
         row = df[(df["exp"] == exp) & (df["ch"] == ch)]
     else:
@@ -92,20 +102,23 @@ for prefix in prefixes:
 
     if len(row) != 1:
         print(f"Missing metadata: {prefix}")
-        continue
+        if coll != "templier":
+            continue
+        else:
+            print("using templier provenance")
+            provenance = json.dumps(
+                {
+                    "owners": ["thomas.templier@epfl.ch"],
+                    "description": "MagC, magnetic collection of ultrathin sections for volumetric correlative light and electron microscopy",
+                    "sources": [],
+                    "processing": [],
+                    "url": "https://neurodata.io/data/templier2019/",
+                }
+            )
+    else:
+        provenance = row.iloc[0].to_json()
 
     # write the metadata to a provinance.json file at that prefix
-    provenance = row.iloc[0].to_json()
-    key = prefix + "provenance.json"
-
-    try:
-        s3.head_object(Bucket=BUCKET_NAME, Key=key)
-        continue
-    except exceptions.ClientError:
-        # Not found
-        print("sending file...")
-
-    # assume role, write...
     ngprecomputed.save_obj(
         s3_write_resource,
         BUCKET_NAME,
@@ -115,5 +128,3 @@ for prefix in prefixes:
         cache_control="no-cache",
         content_type="application/json",
     )
-
-# %%
